@@ -11,21 +11,26 @@ function Player:init(x, y, radius, class)
     self.totalbullets = 3
     self.bulletrecoverytimer = 0
     self.font = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf",12)
+    self.bulletangle = 0
 
 end
 
 function Player:update(dt)
     if self.collider.body then
         if self.class == 'player1' then
-            if love.keyboard.isDown('q') then
-                self.angle = self.angle + 4 * dt
+            if love.keyboard.isDown('a') then
+                self.angle = self.angle - 4 * dt
             end
+
+            self.bulletangle = self.bulletangle + 4*dt
         end
 
         if self.class == 'player2' then
-            if love.keyboard.isDown('o') then
+            if love.keyboard.isDown('j') then
                 self.angle = (self.angle + 4 * dt)
             end
+
+            self.bulletangle = self.bulletangle + 4*dt
         end
         
         self.collider:setX(self.collider:getX() + math.cos(self.angle) * 200 * dt)
@@ -58,7 +63,29 @@ end
 function Player:render()
     if self.collider.body then
         love.graphics.line(self.collider:getX(), self.collider:getY(), self.collider:getX() + math.cos(self.angle) * 10, self.collider:getY() + math.sin(self.angle) * 10)
+        -- love.graphics.circle("fill",self.collider:getX()+30,self.collider:getY()+30,3)
+        -- love.graphics.circle("fill",self.collider:getX()-30,self.collider:getY()+30,3)
+        -- love.graphics.circle("fill",self.collider:getX(),self.collider:getY()-39,3)
+
+        --love.graphics.circle("line",self.collider:getX(),self.collider:getY(),40)
+        
+        if self.totalbullets == 3 then
+            love.graphics.circle("fill",self.collider:getX()+40*math.cos(self.bulletangle+360),self.collider:getY()+40*math.sin(self.bulletangle+360),3)
+            love.graphics.circle("fill",self.collider:getX()+40*math.cos(self.bulletangle),self.collider:getY()+40*math.sin(self.bulletangle),3)
+            love.graphics.circle("fill",self.collider:getX()+40*math.cos(self.bulletangle-360),self.collider:getY()+40*math.sin(self.bulletangle-360),3)
+            -- love.graphics.line(self.collider:getX(), self.collider:getY(), self.collider:getX() + math.cos(self.bulletangle-360) * 40, self.collider:getY() + math.sin(self.bulletangle-360) * 40)
+            -- love.graphics.line(self.collider:getX(), self.collider:getY(), self.collider:getX() + math.cos(self.bulletangle) * 40, self.collider:getY() + math.sin(self.bulletangle) * 40)
+            -- love.graphics.line(self.collider:getX(), self.collider:getY(), self.collider:getX() + math.cos(self.bulletangle+360) * 40, self.collider:getY() + math.sin(self.bulletangle+360) * 40)
+        elseif self.totalbullets ==2 then
+            love.graphics.circle("fill",self.collider:getX()+40*math.cos(self.bulletangle+360),self.collider:getY()+40*math.sin(self.bulletangle+360),3)
+            love.graphics.circle("fill",self.collider:getX()+40*math.cos(self.bulletangle),self.collider:getY()+40*math.sin(self.bulletangle),3)
+            -- love.graphics.line(self.collider:getX(), self.collider:getY(), self.collider:getX() + math.cos(self.bulletangle-360) * 40, self.collider:getY() + math.sin(self.bulletangle-360) * 40)
+            -- love.graphics.line(self.collider:getX(), self.collider:getY(), self.collider:getX() + math.cos(self.bulletangle) * 40, self.collider:getY() + math.sin(self.bulletangle) * 40)
+        elseif self.totalbullets ==1 then
+            love.graphics.circle("fill",self.collider:getX()+40*math.cos(self.bulletangle),self.collider:getY()+40*math.sin(self.bulletangle),3)
+            --love.graphics.line(self.collider:getX(), self.collider:getY(), self.collider:getX() + math.cos(self.bulletangle) * 40, self.collider:getY() + math.sin(self.bulletangle) * 40)
+        end
     end
     love.graphics.setFont(self.font)
-    love.graphics.print(self.totalbullets,self.collider:getX(),self.collider:getY())
+    --love.graphics.print(self.totalbullets,self.collider:getX(),self.collider:getY())
 end

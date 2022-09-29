@@ -75,13 +75,19 @@ function Bomb:update(dt, player)
         -- self:checkDistance(player)
         local q = world:queryCircleArea(self.x, self.y, 200, {'player2'})
         for key, collider in pairs(q) do
-            collider:destroy()
+            if collider.body then
+                collider:destroy()
+            end
+            
         end
     elseif self.shotBy == 'player2' then
         --self:checkDistance(player)
         local q = world:queryCircleArea(self.x, self.y, 200, {'player1'})
         for key, collider in pairs(q) do
-            collider:destroy()
+            if collider.body then
+                collider:destroy()
+            end
+            
         end
     end
 end
@@ -114,7 +120,10 @@ function ScatterShot:update(dt)
             local b = world:queryCircleArea(shot:getX(), shot:getY(),3,{'player2'})
             if #b>0 then 
                 for key, collider in pairs(b) do
-                    collider:destroy()
+                    if collider.body then
+                        collider:destroy()
+                    end
+                    
                 end
             end
         end
@@ -123,7 +132,10 @@ function ScatterShot:update(dt)
             local b = world:queryCircleArea(shot:getX(), shot:getY(),3,{'player1'})
             if #b>0 then 
                 for key, collider in pairs(b) do
-                    collider:destroy()
+                    if collider.body then
+                        collider:destroy()
+                    end
+                    
                 end
             end
         end
