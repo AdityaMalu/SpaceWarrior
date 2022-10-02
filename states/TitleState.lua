@@ -14,6 +14,10 @@ function TitleState:update()
     if(love.keyboard.isDown("return")) then
         gStateMachine:change("play")
     end
+
+    if(love.keyboard.isDown("i")) then
+        gStateMachine:change("intro")
+    end
 end
 
 function TitleState:exit()
@@ -32,5 +36,6 @@ function TitleState:render()
     love.graphics.printf("Space Warriors",0,0,WINDOW_WIDTH,"center")
     love.graphics.setFont(self.font2)
     love.graphics.printf("PRESS ENTER TO PLAY",0,500,WINDOW_WIDTH,"center")
+    love.graphics.printf("PRESS I TO SEE THE RULES",0,550,WINDOW_WIDTH,"center")
 
 end

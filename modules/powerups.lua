@@ -65,7 +65,7 @@ end
 
 function Bomb:checkDistance(player)
     local d = math.sqrt(math.pow(player.collider:getX() - self.x, 2) + math.pow(player.collider:getY() - self.y, 2))
-    if d <= 200 then
+    if d <= 100 then
         player.collider:destroy()
     end
 end
@@ -92,11 +92,16 @@ function Bomb:update(dt, player)
     end
 end
 
+function Bomb:render()
+    --love.graphics.newImage("assets/Bomb 12x12.png",self.x,self.y)
+end
+
 ScatterShot = Class{}
 
 function ScatterShot:init(x1,y1,shotBy)
     self.shots = {}
     self.shotBy = shotBy
+    self.image = love.graphics.newImage("assets/Bullet 5x5.png")
     for angle = 0,6.27,  0.314 do
         local b = world:newCircleCollider(x1,y1,5)
         b.angle = angle
@@ -114,46 +119,54 @@ end
 
 function ScatterShot:update(dt)
     for key , shot in pairs(self.shots) do
-        shot:setX(shot:getX() + math.cos(shot.angle) * 300 * dt)
-        shot:setY(shot:getY() + math.sin(shot.angle) * 300 * dt)
-        if self.shotBy == 'player1' then
-            local b = world:queryCircleArea(shot:getX(), shot:getY(),3,{'player2'})
-            if #b>0 then 
-                for key, collider in pairs(b) do
-                    if collider.body then
-                        collider:destroy()
-                    end
-                    
-                end
-            end
-        end
-
-        if self.shotBy == 'player2' then
-            local b = world:queryCircleArea(shot:getX(), shot:getY(),3,{'player1'})
-            if #b>0 then 
-                for key, collider in pairs(b) do
-                    if collider.body then
-                        collider:destroy()
-                    end
-                    
-                end
-            end
-        end
-
-        if shot:getX() < 0 or shot:getX() > WINDOW_WIDTH then
-            shot:destroy()
-            table.remove(self.shots, key)
-        end
         if shot.body then
-            if shot:getY() < 0 or shot:getY() > WINDOW_HEIGHT then
+            shot:setX(shot:getX() + math.cos(shot.angle) * 300 * dt)
+            shot:setY(shot:getY() + math.sin(shot.angle) * 300 * dt)
+            if self.shotBy == 'player1' then
+                local b = world:queryCircleArea(shot:getX(), shot:getY(),3,{'player2'})
+                if #b>0 then 
+                    for key, collider in pairs(b) do
+                        if collider.body then
+                            collider:destroy()
+                        end
+                        
+                    end
+                end
+            end
+    
+            if self.shotBy == 'player2' then
+                local b = world:queryCircleArea(shot:getX(), shot:getY(),3,{'player1'})
+                if #b>0 then 
+                    for key, collider in pairs(b) do
+                        if collider.body then
+                            collider:destroy()
+                        end
+                        
+                    end
+                end
+            end
+    
+            if shot:getX() < 0 or shot:getX() > WINDOW_WIDTH then
                 shot:destroy()
                 table.remove(self.shots, key)
             end
-        end
+            if shot.body then
+                if shot:getY() < 0 or shot:getY() > WINDOW_HEIGHT then
+                    shot:destroy()
+                    table.remove(self.shots, key)
+                end
+            end
+        end 
     end
+        
 end
 
 function ScatterShot:render()
+    for k,v in pairs(self.shots)do
+        if v.body then
+            love.graphics.draw(self.image,v:getX(),v:getY())
+        end
+    end
 
 end
 

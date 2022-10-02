@@ -10,12 +10,17 @@ math.randomseed(os.time())
 -- count1 = 0
 -- count2 = 0
 function PlayState:init()
-    self.player1 = Player(40, WINDOW_HEIGHT-40, 30, 'player1')
-    self.player2 = Player(WINDOW_WIDTH -40, 40, 30, 'player2')
+    self.player1 = Player(40, WINDOW_HEIGHT/2, 30, 'player1')
+    self.player1rotation = 0
+    self.player1image = love.graphics.newImage("assets/player1.png")
+    self.player2 = Player(WINDOW_WIDTH -40, WINDOW_HEIGHT/2, 30, 'player2')
+    self.player2rotation = 0
+    self.player2image  = love.graphics.newImage("assets/player2.png")
     self.Powersuplier = {}
     self.player1Lasers = {}
     self.player2Lasers = {}
     self.player1Bomb = {}
+    self.player1bombimage = love.graphics.newImage("assets/Bomb 12x12.png")
     self.player2Bomb = {}
     self.player1ScatterShot = {}
     self.player2ScatterShot = {}
@@ -72,6 +77,7 @@ function PlayState:shootBullet(shotBy)
             self.player2.totalbullets = self.player2.totalbullets -1
                 table.insert(self.Player2allBullet,bullets(self.player2.collider:getX(),self.player2.collider:getY(),math.cos(self.player2.angle)+self.player2.collider:getX() , math.sin(self.player2.angle)+self.player2.collider:getY() ,'player2'))
         end
+
     end
 
 
@@ -139,6 +145,62 @@ function PlayState:update(dt)
                 -- print(collision_data.collider.choice)
                 collision_data.collider:destroy()
             end
+        end
+
+        if self.player1.collider.body then
+            for k,v in pairs(self.Player1allBullet)do
+                for k1,v1 in pairs(v.shoots)do
+                    if v1.body then
+                        if  v1:enter('maps') then
+                            v1:destroy()
+                        end
+                    end
+                    
+                    
+                end
+            end
+            
+        end
+
+
+        if self.player2.collider.body then
+            for k,v in pairs(self.Player2allBullet)do
+                for k1,v1 in pairs(v.shoots)do
+                    if  v1:enter('maps') then
+                        v1:destroy()
+                    end
+                    
+                end
+            end
+            
+        end
+
+        if self.player1.collider.body then
+            for k,v in pairs(self.player1ScatterShot)do
+                for k1,v1 in pairs(v.shots)do
+                    if v1.body then
+                        if  v1:enter('maps') then
+                            v1:destroy()
+                        end
+                    end
+                    
+                    
+                end
+            end
+            
+        end
+
+
+        if self.player2.collider.body then
+            for k,v in pairs(self.player2ScatterShot)do
+                for k1,v1 in pairs(v.shots)do
+                    if  v1:enter('maps') then
+                        v1:destroy()
+                    end
+                    
+                end
+            end
+            
         end
         
 
@@ -381,6 +443,8 @@ function PlayState:render()
         love.graphics.rectangle("fill",800,375,50,175)
         love.graphics.rectangle("fill",850,325,175,50)
         love.graphics.setColor(1,1,1)
+        --love.graphics.draw(self.player1image,(self.player1.collider:getX())+45*math.cos(self.player1.angle),(self.player1.collider:getY())+45*math.sin(self.player1.angle),self.player1.angle+360)
+        love.graphics.draw(self.player1image,self.player1.collider:getX(),self.player1.collider:getY(),self.player1.angle+359.75,1,1,self.player1image:getWidth()/2,self.player1image:getHeight()/2)
           self.player1:render()
           self.mappart1:render()
           self.mappart2:render()
@@ -404,6 +468,8 @@ function PlayState:render()
         love.graphics.rectangle("fill",850,325,175,50)
         love.graphics.setColor(1,1,1)
           self.player2:render()
+          --love.graphics.draw(self.player2image,(self.player2.collider:getX())+45*math.cos(self.player2.angle),(self.player2.collider:getY())+45*math.sin(self.player2.angle),self.player2.angle+360)
+          love.graphics.draw(self.player2image,self.player2.collider:getX(),self.player2.collider:getY(),self.player2.angle+359.75,1,1,self.player2image:getWidth()/2,self.player2image:getHeight()/2)
           self.mappart1:render()
           self.mappart2:render()
           self.mappart3:render()
@@ -422,11 +488,38 @@ function PlayState:render()
       for key, value in pairs(self.player1Lasers) do
           value:render()
       end
+
+      for key, value in pairs(self.player2Lasers) do
+        value:render()
+    end
   
       for key, value in pairs(self.Player1allBullet) do
           value:render()
       end
+
+      for key, value in pairs(self.Player2allBullet) do
+        value:render()
+    end
+
+      for k,v in pairs(self.player1Bomb) do
+        love.graphics.draw(self.player1bombimage,v.collider:getX()-5, v.collider:getY()-5)
+      end
+
+      for k,v in pairs(self.player2Bomb) do
+        love.graphics.draw(self.player1bombimage,v.collider:getX()-5, v.collider:getY()-5)
+      end
+
+      for k,v in pairs(self.Powersuplier)do
+            v:render()        
+      end
   
+      for k,v in pairs(self.player1ScatterShot)do
+        v:render()
+      end
+
+      for k,v in pairs(self.player2ScatterShot)do
+        v:render()
+      end
     --   love.graphics.print(count1)
     --   love.graphics.print(count2,0,50)
   

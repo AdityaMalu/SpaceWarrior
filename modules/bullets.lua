@@ -23,6 +23,8 @@ end
 function bullets:update(dt)
 
         self.timer = self.timer +dt      
+            for k,v in pairs(self.shoots) do
+                if v.body then
                     for key , shoot in pairs(self.shoots) do
                         shoot:setX(shoot:getX() + math.cos(shoot.angle) * 600 * dt)
                         shoot:setY(shoot:getY() + math.sin(shoot.angle) * 600 * dt)
@@ -62,9 +64,19 @@ function bullets:update(dt)
                             self.timer = 0
                         end 
                     end
+                end
+            end
+                   
 
-end
+                end
 
 function bullets:render()
-        love.graphics.draw(self.newImage)
+    for k,v in pairs(self.shoots) do
+        for k, v in pairs(self.shoots) do
+            if v.body then
+                love.graphics.draw(self.newImage,v:getX()-3,v:getY()-3,0,1.7,1.7)
+            end
+        end
+        
+    end
 end

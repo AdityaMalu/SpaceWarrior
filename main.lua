@@ -10,6 +10,7 @@ require 'states.TitleState'
 require 'states.EndState'
 require 'states.ScoreState'
 require 'states.harsh_scoreState'
+require 'states.RuleBook'
 wf = require 'libraries.windfield.windfield'
 --Anima = require("libraries/anim8/anim8")
 
@@ -26,7 +27,8 @@ function love.load()
         ['play'] = function () return PlayState() end,
         ['end'] = function () return EndState() end,
         ['score'] = function () return ScoreState() end,
-        ['newScore'] = function () return NewScoreState() end
+        ['newScore'] = function () return NewScoreState() end,
+        ['intro'] = function () return RuleBook() end
     }
 
     gStateMachine:change('title')
@@ -50,7 +52,7 @@ world:addCollisionClass('ScatterShot2P', {ignores = {'player2'}})
 world:addCollisionClass('powersuplier')
 world:addCollisionClass('bullets1P', {ignores = {'player1'}})
 world:addCollisionClass('bullets2P', {ignores = {'player2'}})
-world:addCollisionClass("maps",{ignores = {'laser1P','laser2P','Bomb1P','Bomb2P','ScatterShot1P','ScatterShot2P'}})
+world:addCollisionClass("maps",{ignores = {'laser1P','laser2P','Bomb1P','Bomb2P'}})
 
 function love.resize(w, h)
     push:resize(w, h)
@@ -71,7 +73,7 @@ end
 function love.draw()
     push:apply('start')
     gStateMachine:render()
-    world:draw()
+    --world:draw()
     --love.graphics.print(love.timer.getFPS())
     push:apply('end')
     

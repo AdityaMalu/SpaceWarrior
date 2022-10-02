@@ -34,6 +34,8 @@ function NewScoreState:init()
     end
 
     self.background = love.graphics.newImage("assets/Background/b3.png")
+    self.player1image = love.graphics.newImage("assets/player1.png")
+    self.player2image = love.graphics.newImage("assets/player2.png")
     self.sounds = love.audio.newSource("assets/Sounds/scorestate.wav","static")
     self.sounds:setVolume(0.5)
     self.sounds:setLooping(true)
@@ -82,9 +84,11 @@ function NewScoreState:render()
 
     -- draw player 1
     --love.graphics.circle("fill", self.player1ProgressMeter.x, self.player1ProgressMeter.y, self.player1ProgressMeter.radius)
-    love.graphics.circle("fill", self.player1ProgressMeter.x, self.player1CurrentPosition, self.player1ProgressMeter.radius)
+    love.graphics.draw(self.player1image,self.player1ProgressMeter.x-20, self.player1CurrentPosition-20)
+    --love.graphics.circle("fill", self.player1ProgressMeter.x, self.player1CurrentPosition, self.player1ProgressMeter.radius)
 
     --draw player 2
     --love.graphics.circle("fill", self.player2ProgressMeter.x, self.player2ProgressMeter.y, self.player2ProgressMeter.radius)
-    love.graphics.circle("fill", self.player2ProgressMeter.x, self.player2CurrentPosition, self.player2ProgressMeter.radius)
+    love.graphics.draw(self.player2image,self.player2ProgressMeter.x-20, self.player2CurrentPosition-20)
+    --love.graphics.circle("fill", self.player2ProgressMeter.x, self.player2CurrentPosition, self.player2ProgressMeter.radius)
 end

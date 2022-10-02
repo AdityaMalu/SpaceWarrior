@@ -4,10 +4,10 @@ function powersuplier:init(x1,y1,height,width)
     self.dabba = {}
     local box = world:newRectangleCollider(x1,y1,height,width)
     box:setCollisionClass("powersuplier")
-    box.choice = 4
+    box.choice = 3
     table.insert(self.dabba,box)
     self.timer = 0
-    
+    self.image = love.graphics.newImage("assets/powersupplier.png")
 end
 
 function powersuplier:update(dt)
@@ -24,13 +24,14 @@ function powersuplier:update(dt)
 end
 
 function powersuplier:enter()
-    for k,v in pairs(self.dabba) do
-        if v:enter('player1') then
-                self.choice =1
-        end 
-    end
+
 end
 
-function powersuplier:render()
 
+function powersuplier:render()
+    for k,v in pairs(self.dabba)do
+        if v.body then
+            love.graphics.draw(self.image,v:getX()-17,v:getY()-19,0,0.3,0.3)
+        end
+    end
 end

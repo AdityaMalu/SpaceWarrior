@@ -18,8 +18,12 @@ function EndState:update(dt)
         gStateMachine:change("play")
     end
 
-    PLAYER1_SCORE = 0
-    PLAYER2_SCORE = 0
+    if love.keyboard.isDown("return")then
+        PLAYER1_SCORE = 0
+         PLAYER2_SCORE = 0
+    end
+
+   
 end
 
 function  EndState:exit()
@@ -32,13 +36,17 @@ function EndState:render()
     
     love.graphics.draw(self.background,0,0,0,WINDOW_WIDTH/self.background:getWidth(),WINDOW_HEIGHT/self.background:getHeight())
     love.graphics.setFont(self.font)
-    if PLAYER1_SCORE ==5 then
-        love.graphics.printf("Player 1 is the Winner!!",0,200,WINDOW_WIDTH,"center")
+    if PLAYER1_SCORE ==6 then
+        love.graphics.setColor(0,1,0)
+        love.graphics.printf("Player 1 is the Winner!!",0,300,WINDOW_WIDTH,"center")
     end
 
-    if PLAYER2_SCORE ==5 then
-        love.graphics.printf("Player 2 is the Winner!!",0,200,WINDOW_WIDTH,"center")
+    if PLAYER2_SCORE ==6 then
+        love.graphics.setColor(0,1,0)
+        love.graphics.printf("Player 2 is the Winner!!",0,3300,WINDOW_WIDTH,"center")
     end
+
+    love.graphics.setColor(1,1,1)
     --Animation:draw(400,100)
     love.graphics.printf("GAME",0,100,WINDOW_WIDTH,"center")
     love.graphics.printf("END",0,150,WINDOW_WIDTH,"center")
