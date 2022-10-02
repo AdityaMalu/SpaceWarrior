@@ -127,6 +127,7 @@ function PlayState:update(dt)
         if self.player1.collider.body then
             if self.player1.collider:enter ("powersuplier") then
                 local collision_data = self.player1.collider:getEnterCollisionData('powersuplier')
+
                 -- print(collision_data.collider.choice)
                 collision_data.collider:destroy()
             end
@@ -324,7 +325,11 @@ function PlayState:keypressed(key)
             elseif collision_data.collider.choice ==3 then
                 self:shootScatterShot('player1')
                 collision_data.collider.choice =0
-            end    
+            elseif collision_data.collider.choice ==4 then
+                self.player1.angle = - self.player1.angle
+                self.player2.angle = - self.player2.angle
+                collision_data.collider.choice = 0
+             end   
         end
         self.whichpowerp1 = ""
     end
@@ -341,6 +346,10 @@ function PlayState:keypressed(key)
                 elseif collision_data.collider.choice ==3 then
                     self:shootScatterShot('player2')
                     collision_data.collider.choice =0
+                elseif collision_data.collider.choice ==4 then
+                        self.player1.angle = - self.player1.angle
+                        self.player2.angle = - self.player2.angle
+                        --collision_data.collider.choice =0
                 end
             end
             self.whichpowerp2 = ""
@@ -439,6 +448,8 @@ function PlayState:render()
           elseif  collision_data.collider.choice ==0 then
               self.whichpowerp1 = "Oops No Powerup!!"
               --love.graphics.print("Oops No Powerup",20,20)
+          elseif collision_data.collider.choice ==4 then
+                self.whichpowerp1 = "Reverse"
           end
           
       end
@@ -456,6 +467,8 @@ function PlayState:render()
               --love.graphics.print("ScatterShot",20,20)
           elseif  collision_data.collider.choice ==0 then
               self.whichpowerp2 = "Oops No Powerup!!"
+          elseif collision_data.collider.choice ==4 then
+                self.whichpowerp2 = "Reverse"
               --love.graphics.print("Oops No Powerup",20,20)
           end
           

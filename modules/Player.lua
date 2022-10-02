@@ -1,3 +1,5 @@
+
+require 'modules.powersuplier'
 Player = Class{}
 
 function Player:init(x, y, radius, class)
@@ -20,6 +22,42 @@ function Player:update(dt)
         if self.class == 'player1' then
             if love.keyboard.isDown('a') then
                 self.angle = self.angle - 4 * dt
+            end
+
+            if self.collider:enter ("powersuplier") then
+                local collision_data = self.collider
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                :getEnterCollisionData('powersuplier')
+                if collision_data.collider.choice ==4 then
+                    self.angle = self.angle +4*dt
+                end
             end
 
             self.bulletangle = self.bulletangle + 4*dt

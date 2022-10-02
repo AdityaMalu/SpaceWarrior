@@ -4,7 +4,7 @@ function powersuplier:init(x1,y1,height,width)
     self.dabba = {}
     local box = world:newRectangleCollider(x1,y1,height,width)
     box:setCollisionClass("powersuplier")
-    box.choice = math.random(0,3)
+    box.choice = 4
     table.insert(self.dabba,box)
     self.timer = 0
     

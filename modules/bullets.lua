@@ -17,6 +17,7 @@ function bullets:init(x1,y1,x2,y2,shotBy)
     if #b<=3 then
         table.insert(self.shoots,b)
     end
+    self.newImage = love.graphics.newImage("assets/Bullet 5x5.png")
 end
 
 function bullets:update(dt)
@@ -65,5 +66,5 @@ function bullets:update(dt)
 end
 
 function bullets:render()
-        love.graphics.print(self.counter,100,100)
+        love.graphics.draw(self.newImage)
 end
