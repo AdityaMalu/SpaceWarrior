@@ -36,6 +36,8 @@ function love.load()
 
     PLAYER1_SCORE = 0
     PLAYER2_SCORE = 0
+
+    love.window.setTitle("Space Warrior")
     
 end
 

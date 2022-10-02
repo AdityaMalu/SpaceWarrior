@@ -33,7 +33,7 @@ end
 function TitleState:render()
     love.graphics.draw(self.background,0,0,0,WINDOW_WIDTH/self.background:getWidth(),WINDOW_HEIGHT/self.background:getHeight())
     love.graphics.setFont(self.font)
-    love.graphics.printf("Space Warriors",0,0,WINDOW_WIDTH,"center")
+    love.graphics.printf("Space Warrior",0,0,WINDOW_WIDTH,"center")
     love.graphics.setFont(self.font2)
     love.graphics.printf("PRESS ENTER TO PLAY",0,500,WINDOW_WIDTH,"center")
     love.graphics.printf("PRESS I TO SEE THE RULES",0,550,WINDOW_WIDTH,"center")
