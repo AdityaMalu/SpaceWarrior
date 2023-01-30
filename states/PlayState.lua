@@ -602,7 +602,6 @@ function PlayState:render(dt)
             self.display = 0
         end
         
-        love.graphics.print(v.growingradius,200,200)
         if v.growingradius>0 then
             love.graphics.setColor(255,165,0,0.5)
             love.graphics.circle("fill",v.collider:getX(),v.collider:getY(),v.growingradius)

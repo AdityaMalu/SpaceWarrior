@@ -15,31 +15,40 @@ function Player:init(x, y, radius, class)
     self.font = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf",12)
     self.bulletimage =  love.graphics.newImage('assets/Bullet 5x5.png')
     self.bulletangle = 0
+    self.setrotation = 0
 
 end
 
 function Player:update(dt)
     if self.collider.body then
+        if self.collider:enter('powersuplier')then
+            local collisiondata = self.collider:getEnterCollisionData('powersuplier')
+            if self.setrotation ==0 then
+                self.setrotation = 1
+            elseif self.setrotation == 1 then
+                self.setrotation = 0
+            end
+        end
         if self.class == 'player1' then
             if love.keyboard.isDown('a') then
-                self.angle = self.angle - 4 * dt
-            end
-
-            if self.collider:enter ("powersuplier") then
-                local collision_data = self.collider:getEnterCollisionData('powersuplier')
-                if collision_data.collider.choice ==4 then
-                    self.angle = self.angle +4*dt
+                if self.setrotation == 0 then
+                    self.angle = self.angle - 4 * dt
+                elseif self.setrotation == 1 then
+                    self.angle = self.angle + 4 * dt
                 end
-            end
-
+                
+            end   
             self.bulletangle = self.bulletangle + 4*dt
         end
 
         if self.class == 'player2' then
             if love.keyboard.isDown('j') then
-                self.angle = (self.angle + 4 * dt)
+                if self.setrotation == 0 then
+                    self.angle = self.angle + 4 * dt
+                elseif self.setrotation == 1 then
+                    self.angle = self.angle - 4 * dt
+                end
             end
-
             self.bulletangle = self.bulletangle + 4*dt
         end
         
