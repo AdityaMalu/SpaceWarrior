@@ -43,7 +43,7 @@ function EndState:render()
 
     if PLAYER2_SCORE ==6 then
         love.graphics.setColor(0,1,0)
-        love.graphics.printf("Player 2 is the Winner!!",0,3300,WINDOW_WIDTH,"center")
+        love.graphics.printf("Player 2 is the Winner!!",0,300,WINDOW_WIDTH,"center")
     end
 
     love.graphics.setColor(1,1,1)

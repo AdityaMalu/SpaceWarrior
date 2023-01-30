@@ -17,9 +17,10 @@ wf = require 'libraries.windfield.windfield'
 function love.load()
     --Animation = Anima:init()
     push:setupScreen(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT, {
-        fullscreen = false,
+        fullscreen = true,
         vsync = true,
-        resizable = true
+        resizable = true,
+        stretched = true
     })
 
     gStateMachine = StateMachine{

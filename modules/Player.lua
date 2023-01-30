@@ -14,7 +14,6 @@ function Player:init(x, y, radius, class)
     self.bulletrecoverytimer = 0
     self.font = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf",12)
     self.bulletimage =  love.graphics.newImage('assets/Bullet 5x5.png')
-    self.arrowimage = love.graphics.newImage("assets/line.png")
     self.bulletangle = 0
 
 end
@@ -44,8 +43,8 @@ function Player:update(dt)
             self.bulletangle = self.bulletangle + 4*dt
         end
         
-        self.collider:setX(self.collider:getX() + math.cos(self.angle) * 200 * dt)
-        self.collider:setY(self.collider:getY() + math.sin(self.angle) * 200 * dt)
+        self.collider:setX(self.collider:getX() + math.cos(self.angle) * 350 * dt)
+        self.collider:setY(self.collider:getY() + math.sin(self.angle) * 350 * dt)
 
         if self.collider:getX() <= self.radius then
             self.collider:setX(self.radius)

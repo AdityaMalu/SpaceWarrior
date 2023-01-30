@@ -5,9 +5,8 @@ function RuleBook:init()
     self.timer =0 
 end
 
-function RuleBook:update(dt)
-    self.timer = self.timer+dt
-    if self.timer>10 or love.keyboard.isDown("return")  then
+function RuleBook:update()
+    if love.keyboard.isDown("return")  then
         gStateMachine:change("play")
     end    
 

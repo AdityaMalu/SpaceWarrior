@@ -55,6 +55,7 @@ function Bomb:init(x, y, shotBy)
     self.height = 10
     self.shotBy = shotBy
     self.collider = world:newRectangleCollider(x, y, self.width, self.height)
+    self.growingradius = 0
     --self.collider:setCollisionClass(self.shotBy)
     if shotBy == 'player1' then
         self.collider:setCollisionClass('Bomb1P')
@@ -74,17 +75,30 @@ function Bomb:update(dt, player)
     if self.shotBy == 'player1' then
         -- self:checkDistance(player)
         local q = world:queryCircleArea(self.x, self.y, 200, {'player2'})
+        -- self.growingradius = self.growingradius + 10
+        -- if self.growingradius == 20 then
+        --     self.growingradius = 20
+        -- end
+        
         for key, collider in pairs(q) do
             if collider.body then
+                while self.growingradius<200 do
+                    self.growingradius = self.growingradius + dt
+                end
                 collider:destroy()
             end
             
         end
+
     elseif self.shotBy == 'player2' then
         --self:checkDistance(player)
         local q = world:queryCircleArea(self.x, self.y, 200, {'player1'})
+       
         for key, collider in pairs(q) do
             if collider.body then
+                while self.growingradius<200 do
+                    self.growingradius = self.growingradius + dt
+                end
                 collider:destroy()
             end
             
@@ -93,7 +107,12 @@ function Bomb:update(dt, player)
 end
 
 function Bomb:render()
-    --love.graphics.newImage("assets/Bomb 12x12.png",self.x,self.y)
+    
+    print(self.growingradius)
+    love.graphics.circle("fill",self.x,self.y, self.growingradius)
+    love.graphics.newImage("assets/Bomb_12x12.png",self.x,self.y)
+
+
 end
 
 ScatterShot = Class{}

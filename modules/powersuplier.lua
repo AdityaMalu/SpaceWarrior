@@ -4,7 +4,8 @@ function powersuplier:init(x1,y1,height,width)
     self.dabba = {}
     local box = world:newRectangleCollider(x1,y1,height,width)
     box:setCollisionClass("powersuplier")
-    box.choice = 3
+    box.choice = math.random(0, 4)
+    --box.choice = 
     table.insert(self.dabba,box)
     self.timer = 0
     self.image = love.graphics.newImage("assets/powersupplier.png")
@@ -26,6 +27,7 @@ end
 function powersuplier:enter()
 
 end
+
 
 
 function powersuplier:render()
