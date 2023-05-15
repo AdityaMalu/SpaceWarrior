@@ -438,57 +438,64 @@ function PlayState:keypressed(key,dt)
         love.event.quit()
     end
    
-    if key == 'd' then
+    if(self.player1.collider.body and self.player2.collider.body) then
+        if key == 'd' then
 
-        local collision_data = self.player1.collider:getEnterCollisionData('powersuplier')
-        if collision_data ~= nil then
-            if collision_data.collider.choice == 1 then
-                self:shootLaser('player1')
-                collision_data.collider.choice =0
-            elseif collision_data.collider.choice ==2 then
-                self:plantBomb('player1')
-                collision_data.collider.choice =0
-            elseif collision_data.collider.choice ==3 then
-                self:shootScatterShot('player1')
-                collision_data.collider.choice =0
-            elseif collision_data.collider.choice ==4 then
-                self.player1.angle = - self.player1.angle
-                self.player2.angle = - self.player2.angle
-                collision_data.collider.choice = 0
-             end   
-        end
+        
+                local collision_data = self.player1.collider:getEnterCollisionData('powersuplier')
+                if collision_data ~= nil then
+                    if collision_data.collider.choice == 1 then
+                        self:shootLaser('player1')
+                        collision_data.collider.choice =0
+                    elseif collision_data.collider.choice ==2 then
+                        self:plantBomb('player1')
+                        collision_data.collider.choice =0
+                    elseif collision_data.collider.choice ==3 then
+                        self:shootScatterShot('player1')
+                        collision_data.collider.choice =0
+                    elseif collision_data.collider.choice ==4 then
+                        self.player1.angle = -self.player1.angle
+                        self.player2.angle = -self.player2.angle 
+                        collision_data.collider.choice = 0
+                    end   
+                end
+            end
         self.whichpowerp1 = ""
     end
 
-            if key == 'm' then
-            local collision_data = self.player2.collider:getEnterCollisionData('powersuplier')
-            if collision_data ~= nil then
-                if collision_data.collider.choice == 1 then
-                self:shootLaser('player2')
-                collision_data.collider.choice =0
-                elseif collision_data.collider.choice ==2 then
-                    self:plantBomb('player2')
-                    collision_data.collider.choice =0
-                elseif collision_data.collider.choice ==3 then
-                    self:shootScatterShot('player2')
-                    collision_data.collider.choice =0
-                elseif collision_data.collider.choice ==4 then
-                        self.player1.angle = -self.player1.angle
-                        self.player2.angle = -self.player2.angle
-                        --collision_data.collider.choice =0
+    
+    if (self.player2.collider.body and self.player2.collider.body) then
+            if key == 'right' then
+                    local collision_data = self.player2.collider:getEnterCollisionData('powersuplier')
+                    if collision_data ~= nil then
+                        if collision_data.collider.choice == 1 then
+                        self:shootLaser('player2')
+                        collision_data.collider.choice =0
+                        elseif collision_data.collider.choice ==2 then
+                            self:plantBomb('player2')
+                            collision_data.collider.choice =0
+                        elseif collision_data.collider.choice ==3 then
+                            self:shootScatterShot('player2')
+                            collision_data.collider.choice =0
+                        elseif collision_data.collider.choice ==4 then
+                                self.player1.angle = -self.player1.angle
+                                self.player2.angle = -self.player2.angle
+                                --collision_data.collider.choice =0
+                        end
+                    end
                 end
-            end
+           
             self.whichpowerp2 = ""
         end
 
-    if key == 's' then
+    if key == 'a' then
         self.bulletsound:play()
         self:shootBullet('player1')
         --self.bulletsound:stop()
         
     end
 
-    if key =='n' then
+    if key =='left' then
         self.bulletsound:play()
         self:shootBullet('player2')
         --self.bulletsound:stop()
