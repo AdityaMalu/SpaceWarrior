@@ -15,31 +15,40 @@ function Player:init(x, y, radius, class)
     self.font = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf",12)
     self.bulletimage =  love.graphics.newImage('assets/Bullet 5x5.png')
     self.bulletangle = 0
+    self.setrotation = 0
 
 end
 
 function Player:update(dt)
     if self.collider.body then
+        if self.collider:enter('powersuplier')then
+            local collisiondata = self.collider:getEnterCollisionData('powersuplier')
+            if self.setrotation ==0 then
+                self.setrotation = 1
+            elseif self.setrotation == 1 then
+                self.setrotation = 0
+            end
+        end
         if self.class == 'player1' then
             if love.keyboard.isDown('a') then
-                self.angle = self.angle - 4 * dt
-            end
-
-            if self.collider:enter ("powersuplier") then
-                local collision_data = self.collider:getEnterCollisionData('powersuplier')
-                if collision_data.collider.choice ==4 then
-                    self.angle = self.angle +4*dt
+                if self.setrotation == 0 then
+                    self.angle = self.angle - 4 * dt
+                elseif self.setrotation == 1 then
+                    self.angle = self.angle + 4 * dt
                 end
-            end
-
+                
+            end   
             self.bulletangle = self.bulletangle + 4*dt
         end
 
         if self.class == 'player2' then
             if love.keyboard.isDown('j') then
-                self.angle = (self.angle + 4 * dt)
+                if self.setrotation == 0 then
+                    self.angle = self.angle + 4 * dt
+                elseif self.setrotation == 1 then
+                    self.angle = self.angle - 4 * dt
+                end
             end
-
             self.bulletangle = self.bulletangle + 4*dt
         end
         
@@ -70,9 +79,77 @@ function Player:update(dt)
     end
 end
 
+function Player:activateUltimate()
+    if self.ultimate == 0 then
+        self.timePositions = {}
+        for i=1, 5 do
+            table.insert(self.timePositions, {x= self.x, y=self.y, angle=self.angle})
+        end
+    end
+end
+
+function Player:move(dt)
+    local friction = 0.7
+    self.rotation = 2*math.pi*dt
+    if(love.keyboard.isDown("w"))then
+        self.angle=self.angle+self.rotation
+    end
+    if(love.keyboard.isDown("up"))then
+        self.angle=self.angle-self.rotation
+    end
+    if(love.keyboard.isDown("s"))then
+        self:activateUltimate()
+        self.ultimate = 1
+    end
+    if(love.keyboard.isDown("q"))then
+        self.thrusting=true
+    else
+        self.thrusting = false
+    end
+    if self.thrusting and self.xVel + self.yVel < 50 then
+        self.thrust.x = self.thrust.x + self.thrust.speed * math.cos(self.angle)* dt
+        self.thrust.y = self.thrust.y - self.thrust.speed * math.sin(self.angle)*dt
+    elseif (self.thrust.x ~= 0 or self.thrust.y ~=0) then
+        self.thrust.x = self.thrust.x - friction*self.thrust.x*dt
+        self.thrust.y = self.thrust.y - friction*self.thrust.y*dt
+    end
+    if self.slow then
+        self.x = self.x+0.5*self.thrust.x
+        self.y=self.y+0.5*self.thrust.y
+    else
+        self.x = self.x+self.thrust.x
+        self.y=self.y+self.thrust.y
+    end
+
+    --have to multiply by dt here
+    if (self.x + self.radius < 0)then
+        self.x = love.graphics.getWidth() + self.radius
+    end
+    if(self.x - self.radius > love.graphics.getWidth()) then
+        self.x=0-self.radius
+    end
+    if(self.y+self.radius<0)then
+        self.y = love.graphics.getHeight()+self.radius
+    end
+    if(self.y - self.radius > love.graphics.getHeight())then
+        self.y = -self.radius
+    end
+end
+
+function Player:takeDamage(d)
+    d=d or 10
+    self.health.current = self.health.current - d
+    sounds.blip:play()
+end
+
+function Player:teleport(x, y)
+    self.x  = x
+    self.y = y
+end
+
 function Player:render()
     if self.collider.body then
-        
+        --love.graphics.print(self.setrotation,200,200)
         --love.graphics.draw(self.arrowimage,self.collider:getX(), self.collider:getY(),self.angle)
         --love.graphics.line(self.collider:getX(), self.collider:getY(), self.collider:getX() + math.cos(self.angle) * 10, self.collider:getY() + math.sin(self.angle) * 10)
         -- love.graphics.circle("fill",self.collider:getX()+30,self.collider:getY()+30,3)

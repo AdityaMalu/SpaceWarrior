@@ -96,7 +96,7 @@ function Bomb:update(dt, player)
        
         for key, collider in pairs(q) do
             if collider.body then
-                while self.growingradius<200 do
+                if self.growingradius<200 then
                     self.growingradius = self.growingradius + dt
                 end
                 collider:destroy()

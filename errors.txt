@@ -1,23 +1,8 @@
-Error
-
-libraries/windfield/windfield/init.lua:836: attempt to index field 'enter_collision_data' (a nil value)
 
 
-Traceback
-
-[love "callbacks.lua"]:228: in function 'handler'
-libraries/windfield/windfield/init.lua:836: in function 'getEnterCollisionData'
-states/PlayState.lua:469: in function 'keypressed'
-main.lua:65: in function <main.lua:64>
-[love "callbacks.lua"]:154: in function <[love "callbacks.lua"]:144>
-[C]: in function 'xpcall'
-
-
-
-Error
+2)Error
 
 states/PlayState.lua:481: attempt to perform arithmetic on local 'dt' (a nil value)
-
 
 Traceback
 
@@ -26,3 +11,5 @@ states/PlayState.lua:481: in function 'keypressed'
 main.lua:65: in function <main.lua:64>
 [love "callbacks.lua"]:154: in function <[love "callbacks.lua"]:144>
 [C]: in function 'xpcall'
+
+
