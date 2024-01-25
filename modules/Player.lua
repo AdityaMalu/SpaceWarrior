@@ -1,4 +1,3 @@
-
 require 'modules.powersuplier'
 Player = Class{}
 
@@ -35,14 +34,13 @@ function Player:update(dt)
                     self.angle = self.angle - 4 * dt
                 elseif self.setrotation == 1 then
                     self.angle = self.angle + 4 * dt
-                end
-                
+                end      
             end   
             self.bulletangle = self.bulletangle + 4*dt
         end
 
         if self.class == 'player2' then
-            if love.keyboard.isDown('j') then
+            if love.keyboard.isDown('left') then
                 if self.setrotation == 0 then
                     self.angle = self.angle + 4 * dt
                 elseif self.setrotation == 1 then
@@ -77,6 +75,7 @@ function Player:update(dt)
         self.totalbullets = math.min(self.totalbullets+1,3)
         self.bulletrecoverytimer = 0
     end
+
 end
 
 function Player:activateUltimate()

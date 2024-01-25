@@ -50,18 +50,6 @@ function PlayState:init()
     self.bulletsound:setVolume(0.2)
     self.display = 0
     --self.ScoreBoard = true
-    
-    -- self.rectangle1 = world:newRectangleCollider(300, 100, 100, 100)
-    -- self.rectangle1:setType('static')
-    -- self.rectangle2 = world:newRectangleCollider(700, 100, 100, 100)
-    -- self.rectangle2:setType('static')
-
-    -- self.rectangle3 = world:newRectangleCollider(300, 500, 100, 100)
-    -- self.rectangle3:setType('static')
-
-    -- self.rectangle4 = world:newRectangleCollider(700, 500, 100, 100)
-    -- self.rectangle4:setType('static')
-
 
     self.hasGameEnded = false
 end
@@ -166,9 +154,7 @@ function PlayState:update(dt)
                         if  v1:enter('maps') then
                             v1:destroy()
                         end
-                    end
-                    
-                    
+                    end          
                 end
             end
             
@@ -215,12 +201,7 @@ function PlayState:update(dt)
             
         end
         
-
-
-        -- for key,box in pairs(self.Powersuplier) do
-        --     --box:update(dt)
-        --
-        -- end
+      
 
         if self.player1.collider.body then
             for key, laser in pairs(self.player1Lasers) do
@@ -241,10 +222,7 @@ function PlayState:update(dt)
           --  print(self.player1Bomb.growingradius)
             for key, bomb in pairs(self.player1Bomb) do
                 if bomb.collider.body then
-                    bomb:update(dt, self.player2)
-                   --print(bomb.growingradius)
-                    --love.graphics.circle("fill",bomb.collider:getX(),bomb.collider:getY(),self.growingradius)
-                   
+                    bomb:update(dt, self.player2)                   
                 end
             end
         end
@@ -253,7 +231,6 @@ function PlayState:update(dt)
             for key, bomb in pairs(self.player2Bomb) do
                 if bomb.collider.body then
                     bomb:update(dt, self.player1)
-                    --love.graphics.circle("fill",bomb.collider:getX(),bomb.collider.body:getY(),self.growingradius)
                 end
             end
         end
@@ -280,7 +257,7 @@ function PlayState:update(dt)
             end
         end
 
-        if self.timer > 5 then
+        if self.timer > 10 then
             self:dabbaplant()
             self.timer = 0
         end
@@ -289,10 +266,6 @@ function PlayState:update(dt)
     else
         self.statechangetimer = self.statechangetimer +dt
 
-        -- if self.player1.collider.body then
-           
-            
-        -- end
     
         if self.player1.collider.body then
             self.sounds:setVolume(0.05)
@@ -488,14 +461,13 @@ function PlayState:keypressed(key,dt)
             self.whichpowerp2 = ""
         end
 
-    if key == 'a' then
+    if key == 's' then
         self.bulletsound:play()
         self:shootBullet('player1')
         --self.bulletsound:stop()
-        
     end
 
-    if key =='left' then
+    if key =='up' then
         self.bulletsound:play()
         self:shootBullet('player2')
         --self.bulletsound:stop()
@@ -575,12 +547,8 @@ function PlayState:render(dt)
         end
         
        love.graphics.setColor(1,1,1)
-         
-
-          
+              
       end
-
-      
 
   
       for key, value in pairs(self.player1Lasers) do
@@ -618,7 +586,7 @@ function PlayState:render(dt)
 
       end
 
-      for k,v in pairs(self.player2Bomb) do
+    for k,v in pairs(self.player2Bomb) do
         --self.growingradius = self.growingradius +10
         love.graphics.draw(self.player1bombimage,v.collider:getX()-5, v.collider:getY()-5)
         --love.graphics.circle("line",v.collider:getX(),v.collider:getY(),200)
@@ -632,7 +600,7 @@ function PlayState:render(dt)
         end
         love.graphics.setColor(1,1,1)
         --love.graphics.circle("fill",v.collider:getX(),v.collider:getY(),self.growingradius)
-      end
+    end
 
       for k,v in pairs(self.Powersuplier)do
             v:render()        
@@ -647,7 +615,7 @@ function PlayState:render(dt)
       end
     --   love.graphics.print(count1)
     --   love.graphics.print(count2,0,50)
-  
+      
       love.graphics.print(self.whichpowerp1,20,20)
       love.graphics.print(self.whichpowerp2,WINDOW_WIDTH-150,20)
   
@@ -700,6 +668,6 @@ function PlayState:render(dt)
       -- if self.player1.destroy or self.player2.destroy then
       --     love.graphics.print("Game Ended",100,100)
       -- end
-      love.graphics.print('Memory actually used (in kB): ' .. collectgarbage('count'), 500,20)
+    --   love.graphics.print('Memory actually used (in kB): ' .. collectgarbage('count'), 500,20)
   end
   
