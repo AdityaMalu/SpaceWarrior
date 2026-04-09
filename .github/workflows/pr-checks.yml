@@ -31,8 +31,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y luacheck
 
       - name: Run luacheck
-        working-directory: SpaceWarrior
-        # .luacheckrc in SpaceWarrior/ is picked up automatically
+        # .luacheckrc at repo root is picked up automatically
         run: |
           echo "▶ Running luacheck on project source files…"
           luacheck .
@@ -63,7 +62,7 @@ jobs:
               echo "  ❌ $file"
               failed=1
             fi
-          done < <(find SpaceWarrior -name "*.lua" \
+          done < <(find . -name "*.lua" \
                        ! -path "*/libraries/*" \
                        -print0 | sort -z)
           if [ "$failed" -eq 1 ]; then
@@ -86,11 +85,11 @@ jobs:
       - name: Package game into .love file
         run: |
           echo "▶ Packaging SpaceWarrior.love…"
-          cd SpaceWarrior
-          zip -9 -r ../SpaceWarrior.love . \
-            --exclude "*.git*"             \
-            --exclude "*/.vscode/*"        \
-            --exclude "errors.txt"
+          zip -9 -r SpaceWarrior.love . \
+            --exclude "*.git*"          \
+            --exclude "*/.vscode/*"     \
+            --exclude "errors.txt"      \
+            --exclude ".github/*"
           echo "✅ Package created"
 
       - name: Verify package integrity

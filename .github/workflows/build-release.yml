@@ -33,11 +33,11 @@ jobs:
 
       - name: Create .love file
         run: |
-          cd SpaceWarrior
-          zip -9 -r ../${{ env.GAME_NAME }}.love . \
+          zip -9 -r ${{ env.GAME_NAME }}.love . \
             --exclude "*.git*"        \
             --exclude "*/.vscode/*"   \
-            --exclude "errors.txt"
+            --exclude "errors.txt"    \
+            --exclude ".github/*"
 
       - name: Verify main.lua in package
         run: |
