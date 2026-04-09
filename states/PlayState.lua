@@ -266,24 +266,68 @@ function PlayState:update(dt)
             end
         end
 
-        -- Player-player collision: separate and bounce both ships
+        -- Player-player elastic collision (equal-mass billiard-ball physics)
         if self.player1.collider.body and self.player2.collider.body then
-            local dx = self.player2.collider:getX() - self.player1.collider:getX()
-            local dy = self.player2.collider:getY() - self.player1.collider:getY()
+            local p1x = self.player1.collider:getX()
+            local p1y = self.player1.collider:getY()
+            local p2x = self.player2.collider:getX()
+            local p2y = self.player2.collider:getY()
+            local dx   = p2x - p1x
+            local dy   = p2y - p1y
             local dist = math.sqrt(dx * dx + dy * dy)
             local minDist = self.player1.radius + self.player2.radius
+
             if dist < minDist and dist > 0 then
-                -- reflect both angles off the collision normal
-                self.player1.angle = self.player1.angle + math.pi
-                self.player2.angle = self.player2.angle + math.pi
-                -- push apart so they don't stay overlapping
+                -- Unit collision normal (p1 → p2)
                 local nx = dx / dist
                 local ny = dy / dist
+
+                -- Velocity vectors from current angle + speed
+                local v1x = math.cos(self.player1.angle) * self.player1.speed
+                local v1y = math.sin(self.player1.angle) * self.player1.speed
+                local v2x = math.cos(self.player2.angle) * self.player2.speed
+                local v2y = math.sin(self.player2.angle) * self.player2.speed
+
+                -- Scalar velocity along collision normal for each player
+                local v1n = v1x * nx + v1y * ny
+                local v2n = v2x * nx + v2y * ny
+
+                -- Only resolve if they are actually approaching (not already separating)
+                if v1n - v2n > 0 then
+                    local restitution = 0.75  -- 0=perfectly inelastic, 1=fully elastic
+
+                    -- Equal-mass: swap normal components scaled by restitution
+                    local new_v1n = v2n * restitution
+                    local new_v2n = v1n * restitution
+
+                    -- Rebuild velocity vectors (tangential component stays the same)
+                    local new_v1x = v1x + (new_v1n - v1n) * nx
+                    local new_v1y = v1y + (new_v1n - v1n) * ny
+                    local new_v2x = v2x + (new_v2n - v2n) * nx
+                    local new_v2y = v2y + (new_v2n - v2n) * ny
+
+                    -- Convert back to angle + scalar speed, clamp to valid range
+                    local spd1 = math.sqrt(new_v1x * new_v1x + new_v1y * new_v1y)
+                    local spd2 = math.sqrt(new_v2x * new_v2x + new_v2y * new_v2y)
+                    local MIN_SPEED, MAX_SPEED = 180, 350
+
+                    self.player1.speed = math.max(MIN_SPEED, math.min(MAX_SPEED, spd1))
+                    self.player2.speed = math.max(MIN_SPEED, math.min(MAX_SPEED, spd2))
+
+                    if spd1 > 0.1 then
+                        self.player1.angle = math.atan2(new_v1y, new_v1x)
+                    end
+                    if spd2 > 0.1 then
+                        self.player2.angle = math.atan2(new_v2y, new_v2x)
+                    end
+                end
+
+                -- Positional correction: push apart to eliminate overlap
                 local overlap = (minDist - dist) / 2 + 1
-                self.player1.collider:setX(self.player1.collider:getX() - nx * overlap)
-                self.player1.collider:setY(self.player1.collider:getY() - ny * overlap)
-                self.player2.collider:setX(self.player2.collider:getX() + nx * overlap)
-                self.player2.collider:setY(self.player2.collider:getY() + ny * overlap)
+                self.player1.collider:setX(p1x - nx * overlap)
+                self.player1.collider:setY(p1y - ny * overlap)
+                self.player2.collider:setX(p2x + nx * overlap)
+                self.player2.collider:setY(p2y + ny * overlap)
             end
         end
 

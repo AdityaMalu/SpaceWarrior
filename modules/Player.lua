@@ -6,7 +6,8 @@ function Player:init(x, y, radius, class)
     self.collider = world:newCircleCollider(x, y, radius)
     self.angle = 0
     self.collider:setCollisionClass(class)
-    self.speed = 400
+    self.speed    = 350   -- current speed (reduced by collisions, recovers over time)
+    self.basespeed = 350  -- maximum cruise speed
     self.class = class
     self.coverbullettimer = 2
     self.totalbullets = 3
@@ -50,30 +51,41 @@ function Player:update(dt)
             self.bulletangle = self.bulletangle + 4*dt
         end
 
-        self.collider:setX(self.collider:getX() + math.cos(self.angle) * 350 * dt)
-        self.collider:setY(self.collider:getY() + math.sin(self.angle) * 350 * dt)
+        -- Move using per-player speed (modified by collisions)
+        self.collider:setX(self.collider:getX() + math.cos(self.angle) * self.speed * dt)
+        self.collider:setY(self.collider:getY() + math.sin(self.angle) * self.speed * dt)
 
-        -- Wall bounce: reflect angle off each boundary instead of hard-clamping
+        -- Wall bounce: reflect angle off each boundary with slight energy loss
         if self.collider:getX() <= self.radius then
             self.collider:setX(self.radius + 1)
-            self.angle = math.pi - self.angle   -- reflect horizontal
+            self.angle = math.pi - self.angle
+            self.speed = self.speed * 0.88
         end
         if self.collider:getX() >= WINDOW_WIDTH - self.radius then
             self.collider:setX(WINDOW_WIDTH - self.radius - 1)
-            self.angle = math.pi - self.angle   -- reflect horizontal
+            self.angle = math.pi - self.angle
+            self.speed = self.speed * 0.88
         end
         if self.collider:getY() <= self.radius then
             self.collider:setY(self.radius + 1)
-            self.angle = -self.angle             -- reflect vertical
+            self.angle = -self.angle
+            self.speed = self.speed * 0.88
         end
         if self.collider:getY() >= WINDOW_HEIGHT - self.radius then
             self.collider:setY(WINDOW_HEIGHT - self.radius - 1)
-            self.angle = -self.angle             -- reflect vertical
+            self.angle = -self.angle
+            self.speed = self.speed * 0.88
         end
 
         -- Map obstacle bounce: reverse direction when hitting a wall block
         if self.collider:enter('maps') then
             self.angle = self.angle + math.pi
+            self.speed = self.speed * 0.85
+        end
+
+        -- Gradually recover speed toward base cruise speed after collisions
+        if self.speed < self.basespeed then
+            self.speed = math.min(self.basespeed, self.speed + 45 * dt)
         end
     end
 
