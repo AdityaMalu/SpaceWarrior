@@ -18,6 +18,7 @@ on:
 env:
   LOVE_VERSION: "11.5"
   GAME_NAME: "SpaceWarrior"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ---------------------------------------------------------------------------

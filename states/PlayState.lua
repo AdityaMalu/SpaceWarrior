@@ -406,7 +406,7 @@ function PlayState:exit()
 
 end
 
-function PlayState:keypressed(key,dt)
+function PlayState:keypressed(key)
     if key == 'escape' then
         love.event.quit()
     end
