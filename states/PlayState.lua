@@ -49,7 +49,10 @@ function PlayState:init()
     self.bulletsound = love.audio.newSource('assets/Sounds/bulletshootsound.mp3','static')
     self.bulletsound:setVolume(0.2)
     self.display = 0
-    --self.ScoreBoard = true
+
+    -- pending power: stores which powerup each player collected (0 = none)
+    self.p1pendingpower = 0
+    self.p2pendingpower = 0
 
     self.hasGameEnded = false
 end
@@ -126,23 +129,29 @@ function PlayState:update(dt)
             self.player2:update(dt)
         end
 
-        if self.player1.collider.body then
-            if self.player1.collider:enter ("powersuplier") then
-                local collision_data = self.player1.collider:getEnterCollisionData('powersuplier')
+        -- Power collection: save choice BEFORE destroying collider, set HUD text
+        local powerNames = { [1]="Laser", [2]="Bomb", [3]="Scatter Shot", [4]="Reverse" }
 
-                -- print(collision_data.collider.choice)
-                if collision_data.collider.body then
-                    collision_data.collider:destroy()
+        if self.player1.collider.body then
+            if self.player1.collider:enter("powersuplier") then
+                local cd = self.player1.collider:getEnterCollisionData('powersuplier')
+                local choice = cd.collider.choice
+                self.p1pendingpower = choice
+                self.whichpowerp1 = powerNames[choice] or "???"
+                if cd.collider.body then
+                    cd.collider:destroy()
                 end
             end
         end
 
         if self.player2.collider.body then
-            if self.player2.collider:enter ("powersuplier") then
-                local collision_data = self.player2.collider:getEnterCollisionData('powersuplier')
-                -- print(collision_data.collider.choice)
-                if collision_data.collider.body then
-                    collision_data.collider:destroy()
+            if self.player2.collider:enter("powersuplier") then
+                local cd = self.player2.collider:getEnterCollisionData('powersuplier')
+                local choice = cd.collider.choice
+                self.p2pendingpower = choice
+                self.whichpowerp2 = powerNames[choice] or "???"
+                if cd.collider.body then
+                    cd.collider:destroy()
                 end
             end
         end
@@ -254,6 +263,27 @@ function PlayState:update(dt)
         if self.player2.collider.body then
             for key,value in pairs(self.Player2allBullet) do
                 value:update(dt)
+            end
+        end
+
+        -- Player-player collision: separate and bounce both ships
+        if self.player1.collider.body and self.player2.collider.body then
+            local dx = self.player2.collider:getX() - self.player1.collider:getX()
+            local dy = self.player2.collider:getY() - self.player1.collider:getY()
+            local dist = math.sqrt(dx * dx + dy * dy)
+            local minDist = self.player1.radius + self.player2.radius
+            if dist < minDist and dist > 0 then
+                -- reflect both angles off the collision normal
+                self.player1.angle = self.player1.angle + math.pi
+                self.player2.angle = self.player2.angle + math.pi
+                -- push apart so they don't stay overlapping
+                local nx = dx / dist
+                local ny = dy / dist
+                local overlap = (minDist - dist) / 2 + 1
+                self.player1.collider:setX(self.player1.collider:getX() - nx * overlap)
+                self.player1.collider:setY(self.player1.collider:getY() - ny * overlap)
+                self.player2.collider:setX(self.player2.collider:getX() + nx * overlap)
+                self.player2.collider:setY(self.player2.collider:getY() + ny * overlap)
             end
         end
 
@@ -411,55 +441,39 @@ function PlayState:keypressed(key)
         love.event.quit()
     end
 
-    if(self.player1.collider.body and self.player2.collider.body) then
-        if key == 'd' then
-
-
-                local collision_data = self.player1.collider:getEnterCollisionData('powersuplier')
-                if collision_data ~= nil then
-                    if collision_data.collider.choice == 1 then
-                        self:shootLaser('player1')
-                        collision_data.collider.choice =0
-                    elseif collision_data.collider.choice ==2 then
-                        self:plantBomb('player1')
-                        collision_data.collider.choice =0
-                    elseif collision_data.collider.choice ==3 then
-                        self:shootScatterShot('player1')
-                        collision_data.collider.choice =0
-                    elseif collision_data.collider.choice ==4 then
-                        self.player1.angle = -self.player1.angle
-                        self.player2.angle = -self.player2.angle
-                        collision_data.collider.choice = 0
-                    end
-                end
+    if self.player1.collider.body and self.player2.collider.body then
+        -- Player 1 fires their stored power with D
+        if key == 'd' and self.p1pendingpower > 0 then
+            if self.p1pendingpower == 1 then
+                self:shootLaser('player1')
+            elseif self.p1pendingpower == 2 then
+                self:plantBomb('player1')
+            elseif self.p1pendingpower == 3 then
+                self:shootScatterShot('player1')
+            elseif self.p1pendingpower == 4 then
+                self.player1.angle = -self.player1.angle
+                self.player2.angle = -self.player2.angle
             end
-        self.whichpowerp1 = ""
-    end
-
-
-    if (self.player2.collider.body and self.player2.collider.body) then
-            if key == 'right' then
-                    local collision_data = self.player2.collider:getEnterCollisionData('powersuplier')
-                    if collision_data ~= nil then
-                        if collision_data.collider.choice == 1 then
-                        self:shootLaser('player2')
-                        collision_data.collider.choice =0
-                        elseif collision_data.collider.choice ==2 then
-                            self:plantBomb('player2')
-                            collision_data.collider.choice =0
-                        elseif collision_data.collider.choice ==3 then
-                            self:shootScatterShot('player2')
-                            collision_data.collider.choice =0
-                        elseif collision_data.collider.choice ==4 then
-                                self.player1.angle = -self.player1.angle
-                                self.player2.angle = -self.player2.angle
-                                --collision_data.collider.choice =0
-                        end
-                    end
-                end
-
-            self.whichpowerp2 = ""
+            self.p1pendingpower = 0
+            self.whichpowerp1 = ""   -- clear HUD only after power is used
         end
+
+        -- Player 2 fires their stored power with Right arrow
+        if key == 'right' and self.p2pendingpower > 0 then
+            if self.p2pendingpower == 1 then
+                self:shootLaser('player2')
+            elseif self.p2pendingpower == 2 then
+                self:plantBomb('player2')
+            elseif self.p2pendingpower == 3 then
+                self:shootScatterShot('player2')
+            elseif self.p2pendingpower == 4 then
+                self.player1.angle = -self.player1.angle
+                self.player2.angle = -self.player2.angle
+            end
+            self.p2pendingpower = 0
+            self.whichpowerp2 = ""   -- clear HUD only after power is used
+        end
+    end
 
     if key == 's' then
         self.bulletsound:play()
@@ -616,48 +630,16 @@ function PlayState:render(dt)
     --   love.graphics.print(count1)
     --   love.graphics.print(count2,0,50)
 
-      love.graphics.print(self.whichpowerp1,20,20)
-      love.graphics.print(self.whichpowerp2,WINDOW_WIDTH-150,20)
-
-
-      if self.player1.collider:enter("powersuplier") then
-          local collision_data = self.player1.collider:getEnterCollisionData('powersuplier')
-          if collision_data.collider.choice ==1 then
-              self.whichpowerp1 = "Laser"
-              --love.graphics.print("Laser",20,20)
-          elseif collision_data.collider.choice ==2 then
-              self.whichpowerp1 = "Bomb"
-              --love.graphics.print("Bomb",20,20)
-          elseif collision_data.collider.choice ==3  then
-              self.whichpowerp1 = "ScatterShot"
-              --love.graphics.print("ScatterShot",20,20)
-          elseif  collision_data.collider.choice ==0 then
-              self.whichpowerp1 = "Oops No Powerup!!"
-              --love.graphics.print("Oops No Powerup",20,20)
-          elseif collision_data.collider.choice ==4 then
-                self.whichpowerp1 = "Reverse"
-          end
-
+      -- HUD: power name stays until the player fires it (set in update, cleared in keypressed)
+      if self.whichpowerp1 ~= "" then
+          love.graphics.setColor(1, 0.9, 0.2)
+          love.graphics.print("P1 Power: " .. self.whichpowerp1 .. "  [press D]", 20, 20)
+          love.graphics.setColor(1, 1, 1)
       end
-
-      if self.player2.collider:enter("powersuplier") then
-          local collision_data = self.player2.collider:getEnterCollisionData('powersuplier')
-          if collision_data.collider.choice ==1 then
-              self.whichpowerp2 = "Laser"
-              --love.graphics.print("Laser",20,20)
-          elseif collision_data.collider.choice ==2 then
-              self.whichpowerp2 = "Bomb"
-              --love.graphics.print("Bomb",20,20)
-          elseif collision_data.collider.choice ==3  then
-              self.whichpowerp2 = "ScatterShot"
-              --love.graphics.print("ScatterShot",20,20)
-          elseif  collision_data.collider.choice ==0 then
-              self.whichpowerp2 = "Oops No Powerup!!"
-          elseif collision_data.collider.choice ==4 then
-                self.whichpowerp2 = "Reverse"
-              --love.graphics.print("Oops No Powerup",20,20)
-          end
-
+      if self.whichpowerp2 ~= "" then
+          love.graphics.setColor(0.3, 0.9, 1)
+          love.graphics.print("P2 Power: " .. self.whichpowerp2 .. "  [press ->]", WINDOW_WIDTH - 220, 20)
+          love.graphics.setColor(1, 1, 1)
       end
     --end
 

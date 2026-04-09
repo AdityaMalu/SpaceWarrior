@@ -4,8 +4,8 @@ function powersuplier:init(x1,y1,height,width)
     self.dabba = {}
     local box = world:newRectangleCollider(x1,y1,height,width)
     box:setCollisionClass("powersuplier")
-    -- box.choice = math.random(0, 4)
-    box.choice = 2
+    box:setType("static")          -- immovable: players can't push it around
+    box.choice = math.random(1, 4) -- always assign a real power (1-4, skip 0)
     table.insert(self.dabba,box)
     self.timer = 0
     self.image = love.graphics.newImage("assets/powersupplier.png")

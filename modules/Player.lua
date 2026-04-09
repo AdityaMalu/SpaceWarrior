@@ -53,17 +53,27 @@ function Player:update(dt)
         self.collider:setX(self.collider:getX() + math.cos(self.angle) * 350 * dt)
         self.collider:setY(self.collider:getY() + math.sin(self.angle) * 350 * dt)
 
+        -- Wall bounce: reflect angle off each boundary instead of hard-clamping
         if self.collider:getX() <= self.radius then
-            self.collider:setX(self.radius)
+            self.collider:setX(self.radius + 1)
+            self.angle = math.pi - self.angle   -- reflect horizontal
         end
         if self.collider:getX() >= WINDOW_WIDTH - self.radius then
-            self.collider:setX(WINDOW_WIDTH - self.radius)
+            self.collider:setX(WINDOW_WIDTH - self.radius - 1)
+            self.angle = math.pi - self.angle   -- reflect horizontal
         end
         if self.collider:getY() <= self.radius then
-            self.collider:setY(self.radius)
+            self.collider:setY(self.radius + 1)
+            self.angle = -self.angle             -- reflect vertical
         end
         if self.collider:getY() >= WINDOW_HEIGHT - self.radius then
-            self.collider:setY(WINDOW_HEIGHT - self.radius)
+            self.collider:setY(WINDOW_HEIGHT - self.radius - 1)
+            self.angle = -self.angle             -- reflect vertical
+        end
+
+        -- Map obstacle bounce: reverse direction when hitting a wall block
+        if self.collider:enter('maps') then
+            self.angle = self.angle + math.pi
         end
     end
 
