@@ -1,0 +1,116 @@
+# =============================================================================
+# pr-checks.yml
+# Runs on every Pull Request targeting the `main` branch.
+#
+# Jobs:
+#   1. lint    — static analysis with luacheck
+#   2. syntax  — Lua syntax validation with luac
+#   3. package — verifies the game can be packaged into a .love file
+# =============================================================================
+
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Static Analysis — luacheck
+  # ---------------------------------------------------------------------------
+  lint:
+    name: "Luacheck — Static Analysis"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install luacheck
+        run: sudo apt-get update -qq && sudo apt-get install -y luacheck
+
+      - name: Run luacheck
+        working-directory: SpaceWarrior
+        # .luacheckrc in SpaceWarrior/ is picked up automatically
+        run: |
+          echo "▶ Running luacheck on project source files…"
+          luacheck .
+          echo "✅ luacheck passed"
+
+  # ---------------------------------------------------------------------------
+  # 2. Syntax Validation — luac
+  # ---------------------------------------------------------------------------
+  syntax:
+    name: "Lua Syntax Validation"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Lua compiler
+        run: sudo apt-get update -qq && sudo apt-get install -y lua5.4
+
+      - name: Validate .lua syntax (exclude libraries/)
+        run: |
+          echo "▶ Syntax-checking all project .lua files…"
+          failed=0
+          while IFS= read -r -d '' file; do
+            if luac5.4 -p "$file" 2>&1; then
+              echo "  ✅ $file"
+            else
+              echo "  ❌ $file"
+              failed=1
+            fi
+          done < <(find SpaceWarrior -name "*.lua" \
+                       ! -path "*/libraries/*" \
+                       -print0 | sort -z)
+          if [ "$failed" -eq 1 ]; then
+            echo "Syntax errors detected. See above."
+            exit 1
+          fi
+          echo "✅ All files passed syntax validation"
+
+  # ---------------------------------------------------------------------------
+  # 3. Package Verification — .love file
+  # ---------------------------------------------------------------------------
+  package:
+    name: "Verify .love Packaging"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Package game into .love file
+        run: |
+          echo "▶ Packaging SpaceWarrior.love…"
+          cd SpaceWarrior
+          zip -9 -r ../SpaceWarrior.love . \
+            --exclude "*.git*"             \
+            --exclude "*/.vscode/*"        \
+            --exclude "errors.txt"
+          echo "✅ Package created"
+
+      - name: Verify package integrity
+        run: |
+          echo "▶ Verifying package contents…"
+          python3 - <<'EOF'
+          import zipfile, sys
+
+          path = "SpaceWarrior.love"
+          with zipfile.ZipFile(path) as z:
+              names = z.namelist()
+              assert "main.lua" in names, \
+                  f"FAIL: main.lua not found in {path}. Contents: {names}"
+          size_kb = __import__("os").path.getsize(path) // 1024
+          print(f"  ✅  main.lua present — package size: {size_kb} KB")
+          EOF
+
+      - name: Upload .love as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpaceWarrior-pr-${{ github.event.pull_request.number }}.love
+          path: SpaceWarrior.love
+          retention-days: 7

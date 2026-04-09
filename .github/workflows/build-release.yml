@@ -1,0 +1,162 @@
+# =============================================================================
+# build-release.yml
+# Triggered on every push (merge) to `main`.
+#
+# Jobs:
+#   1. package-love   — zips game sources into SpaceWarrior.love
+#   2. build-binaries — builds Windows, macOS & Linux executables (Ubuntu runner)
+#   3. release        — creates (or updates) a "Beta" pre-release on GitHub
+# =============================================================================
+
+name: Build and Release (Beta)
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  LOVE_VERSION: "11.5"
+  GAME_NAME: "SpaceWarrior"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Package .love
+  # ---------------------------------------------------------------------------
+  package-love:
+    name: "Package .love"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .love file
+        run: |
+          cd SpaceWarrior
+          zip -9 -r ../${{ env.GAME_NAME }}.love . \
+            --exclude "*.git*"        \
+            --exclude "*/.vscode/*"   \
+            --exclude "errors.txt"
+
+      - name: Verify main.lua in package
+        run: |
+          python3 - <<'EOF'
+          import zipfile
+          with zipfile.ZipFile("${{ env.GAME_NAME }}.love") as z:
+              assert "main.lua" in z.namelist(), "main.lua missing from .love package"
+          print("✅ Package OK")
+          EOF
+
+      - name: Upload .love artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: love-package
+          path: ${{ env.GAME_NAME }}.love
+
+  # ---------------------------------------------------------------------------
+  # 2. Build platform binaries (all three platforms on a single Ubuntu runner)
+  # ---------------------------------------------------------------------------
+  build-binaries:
+    name: "Build Platform Binaries"
+    needs: package-love
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download .love package
+        uses: actions/download-artifact@v4
+        with:
+          name: love-package
+
+      - name: Download LÖVE ${{ env.LOVE_VERSION }} releases
+        env:
+          BASE_URL: https://github.com/love2d/love/releases/download/${{ env.LOVE_VERSION }}
+        run: |
+          wget -q "$BASE_URL/love-${{ env.LOVE_VERSION }}-win64.zip"
+          wget -q "$BASE_URL/love-${{ env.LOVE_VERSION }}-macos.zip"
+          wget -q "$BASE_URL/love-${{ env.LOVE_VERSION }}-x86_64.AppImage"
+
+      # ── Windows ─────────────────────────────────────────────────────────────
+      - name: Build Windows binary
+        run: |
+          unzip -q love-${{ env.LOVE_VERSION }}-win64.zip
+          DIR="love-${{ env.LOVE_VERSION }}-win64"
+          # Fuse: append .love to love.exe to create a self-contained executable
+          cat "$DIR/love.exe" ${{ env.GAME_NAME }}.love > "$DIR/${{ env.GAME_NAME }}.exe"
+          rm "$DIR/love.exe"
+          zip -9 ${{ env.GAME_NAME }}-windows-x64.zip "$DIR"/*
+
+      # ── macOS ───────────────────────────────────────────────────────────────
+      - name: Build macOS binary
+        run: |
+          unzip -q love-${{ env.LOVE_VERSION }}-macos.zip -d love-macos
+          # Copy .love into the app bundle's Resources
+          cp ${{ env.GAME_NAME }}.love love-macos/love.app/Contents/Resources/
+          mv love-macos/love.app love-macos/${{ env.GAME_NAME }}.app
+          zip -9 -r ${{ env.GAME_NAME }}-macos.zip love-macos/${{ env.GAME_NAME }}.app
+
+      # ── Linux ────────────────────────────────────────────────────────────────
+      - name: Build Linux binary
+        run: |
+          chmod +x love-${{ env.LOVE_VERSION }}-x86_64.AppImage
+          # Fuse: append .love to the AppImage
+          cat love-${{ env.LOVE_VERSION }}-x86_64.AppImage \
+              ${{ env.GAME_NAME }}.love \
+              > ${{ env.GAME_NAME }}-linux-x86_64.AppImage
+          chmod +x ${{ env.GAME_NAME }}-linux-x86_64.AppImage
+
+      - name: Upload platform artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-builds
+          path: |
+            ${{ env.GAME_NAME }}-windows-x64.zip
+            ${{ env.GAME_NAME }}-macos.zip
+            ${{ env.GAME_NAME }}-linux-x86_64.AppImage
+
+  # ---------------------------------------------------------------------------
+  # 3. Create Beta GitHub Release
+  # ---------------------------------------------------------------------------
+  release:
+    name: "Publish Beta Release"
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to create releases and upload assets
+
+    steps:
+      - name: Download love-package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: love-package
+          path: dist/
+
+      - name: Download platform-builds artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: platform-builds
+          path: dist/
+
+      - name: Create Beta Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "beta-${{ github.run_number }}"
+          name: "Beta Build #${{ github.run_number }}"
+          prerelease: true
+          body: |
+            **Automated Beta Build** — from commit `${{ github.sha }}`
+
+            > ⚠️ This is a pre-release build for testing purposes only.
+
+            ## Downloads
+            | Platform | File | Notes |
+            |----------|------|-------|
+            | 🪟 Windows | `SpaceWarrior-windows-x64.zip` | Extract and run `SpaceWarrior.exe` |
+            | 🍎 macOS   | `SpaceWarrior-macos.zip`       | Extract and open `SpaceWarrior.app` |
+            | 🐧 Linux   | `SpaceWarrior-linux-x86_64.AppImage` | `chmod +x` then run |
+            | 🎮 LÖVE    | `SpaceWarrior.love`            | Requires [LÖVE ${{ env.LOVE_VERSION }}](https://love2d.org) |
+          files: |
+            dist/SpaceWarrior.love
+            dist/SpaceWarrior-windows-x64.zip
+            dist/SpaceWarrior-macos.zip
+            dist/SpaceWarrior-linux-x86_64.AppImage
