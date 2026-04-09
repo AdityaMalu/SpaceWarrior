@@ -39,7 +39,7 @@ function love.load()
     PLAYER2_SCORE = 0
 
     love.window.setTitle("Space Warrior")
-    
+
 end
 
 world = wf.newWorld(0, 0, false)
@@ -79,5 +79,5 @@ function love.draw()
     --world:draw()
     --love.graphics.print(love.timer.getFPS())
     push:apply('end')
-    
+
 end

@@ -12,7 +12,7 @@ function NewScoreState:enter(winner)
     else
         self.player1CurrentPosition = self.player1ProgressMeter.y
     end
-    
+
 
     -- player2
     self.player2ProgressMeter = {}
@@ -42,7 +42,7 @@ function NewScoreState:init()
     self.sounds:setLooping(true)
     self.sounds:play()
     -- player 1
-    
+
 
     -- animationSpeed
     self.animationSpeed = 100
@@ -64,7 +64,7 @@ function NewScoreState:update(dt)
         gStateMachine:change("end")
     end
 
-    if PLAYER2_SCORE == 6 then 
+    if PLAYER2_SCORE == 6 then
         gStateMachine:change("end")
     end
 end

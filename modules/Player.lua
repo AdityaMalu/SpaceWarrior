@@ -20,9 +20,9 @@ end
 
 function Player:update(dt)
     if self.collider.body then
-        if self.collider:enter('powersuplier')then
-            local collisiondata = self.collider:getEnterCollisionData('powersuplier')
-            if self.setrotation ==0 then
+        if self.collider:enter('powersuplier') then
+            local _ = self.collider:getEnterCollisionData('powersuplier')
+            if self.setrotation == 0 then
                 self.setrotation = 1
             elseif self.setrotation == 1 then
                 self.setrotation = 0
@@ -34,8 +34,8 @@ function Player:update(dt)
                     self.angle = self.angle - 4 * dt
                 elseif self.setrotation == 1 then
                     self.angle = self.angle + 4 * dt
-                end      
-            end   
+                end
+            end
             self.bulletangle = self.bulletangle + 4*dt
         end
 
@@ -49,7 +49,7 @@ function Player:update(dt)
             end
             self.bulletangle = self.bulletangle + 4*dt
         end
-        
+
         self.collider:setX(self.collider:getX() + math.cos(self.angle) * 350 * dt)
         self.collider:setY(self.collider:getY() + math.sin(self.angle) * 350 * dt)
 
@@ -70,7 +70,7 @@ function Player:update(dt)
     if self.totalbullets <3 then
         self.bulletrecoverytimer = self.bulletrecoverytimer +dt
     end
-    
+
     if self.bulletrecoverytimer>2 then
         self.totalbullets = math.min(self.totalbullets+1,3)
         self.bulletrecoverytimer = 0
@@ -156,7 +156,7 @@ function Player:render()
         -- love.graphics.circle("fill",self.collider:getX(),self.collider:getY()-39,3)
 
         --love.graphics.circle("line",self.collider:getX(),self.collider:getY(),40)
-        
+
         if self.totalbullets == 3 then
             love.graphics.draw(self.bulletimage,self.collider:getX()+40*math.cos(self.bulletangle+360),self.collider:getY()+40*math.sin(self.bulletangle+360))
             love.graphics.draw(self.bulletimage,self.collider:getX()+40*math.cos(self.bulletangle),self.collider:getY()+40*math.sin(self.bulletangle))

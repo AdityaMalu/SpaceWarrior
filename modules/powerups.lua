@@ -26,14 +26,14 @@ function Laser:update(dt)
     if self.shotBy == 'player1' then
         local collider_1 = world:queryLine(self.x1, self.y1, self.x2, self.y2, {'player2'})
         if #collider_1 > 0 then
-            for key, value in pairs(collider_1) do
+            for _, value in pairs(collider_1) do
                 value:destroy()
             end
         end
     elseif self.shotBy == 'player2' then
         local collider_1 = world:queryLine(self.x1, self.y1, self.x2, self.y2, {'player1'})
         if #collider_1 > 0 then
-            for key, value in pairs(collider_1) do
+            for _, value in pairs(collider_1) do
                 value:destroy()
             end
         end
@@ -79,43 +79,35 @@ function Bomb:update(dt, player)
         -- if self.growingradius == 20 then
         --     self.growingradius = 20
         -- end
-        
-        for key, collider in pairs(q) do
+
+        for _, collider in pairs(q) do
             if collider.body then
                 while self.growingradius<200 do
-                    self.growingradius = self.growingradius +  dt
+                    self.growingradius = self.growingradius + dt
                 end
                 collider:destroy()
             end
-            
         end
 
     elseif self.shotBy == 'player2' then
         --self:checkDistance(player)
         local q = world:queryCircleArea(self.x, self.y, 200, {'player1'})
-       
-        for key, collider in pairs(q) do
+
+        for _, collider in pairs(q) do
             if collider.body then
                 if self.growingradius<200 then
-                    self.growingradius = self.growingradius+ dt
+                    self.growingradius = self.growingradius + dt
                 end
                 collider:destroy()
             end
-            
         end
     end
 end
 
 function Bomb:render()
-    
-    print(self.growingradius)
-    local d = math.sqrt(math.pow(player.collider:getX() - self.x, 2) + math.pow(player.collider:getY() - self.y, 2))
     love.graphics.setColor(0,1,1,0.5)
     love.graphics.circle("fill",self.x,self.y, self.growingradius)
     love.graphics.setColor(1,1,1,1)
-    love.graphics.newImage("assets/Bomb_12x12.png",self.x,self.y)
-
-
 end
 
 ScatterShot = Class{}
@@ -136,7 +128,7 @@ function ScatterShot:init(x1,y1,shotBy)
         end
 
         table.insert(self.shots,b)
-    end    
+    end
 end
 
 function ScatterShot:update(dt)
@@ -146,28 +138,26 @@ function ScatterShot:update(dt)
             shot:setY(shot:getY() + math.sin(shot.angle) * 300 * dt)
             if self.shotBy == 'player1' then
                 local b = world:queryCircleArea(shot:getX(), shot:getY(),3,{'player2'})
-                if #b>0 then 
-                    for key, collider in pairs(b) do
+                if #b>0 then
+                    for _, collider in pairs(b) do
                         if collider.body then
                             collider:destroy()
                         end
-                        
                     end
                 end
             end
-    
+
             if self.shotBy == 'player2' then
                 local b = world:queryCircleArea(shot:getX(), shot:getY(),3,{'player1'})
-                if #b>0 then 
-                    for key, collider in pairs(b) do
+                if #b>0 then
+                    for _, collider in pairs(b) do
                         if collider.body then
                             collider:destroy()
                         end
-                        
                     end
                 end
             end
-    
+
             if shot:getX() < 0 or shot:getX() > WINDOW_WIDTH then
                 shot:destroy()
                 table.remove(self.shots, key)
@@ -178,15 +168,15 @@ function ScatterShot:update(dt)
                     table.remove(self.shots, key)
                 end
             end
-        end 
+        end
     end
-        
+
 end
 
 function ScatterShot:render()
-    for k,v in pairs(self.shots)do
+    for _, v in pairs(self.shots) do
         if v.body then
-            love.graphics.draw(self.image,v:getX(),v:getY())
+            love.graphics.draw(self.image, v:getX(), v:getY())
         end
     end
 

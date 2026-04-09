@@ -7,5 +7,5 @@ function Maps:init(x,y,width,height,corner)
 end
 
 function Maps:render()
-    
+
 end

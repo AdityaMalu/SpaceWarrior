@@ -21,7 +21,7 @@ function BaseState:enter()
 end
 
 function BaseState:enter2()
-  
+
 end
 
 function BaseState:exit()

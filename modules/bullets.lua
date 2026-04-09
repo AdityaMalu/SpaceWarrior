@@ -22,16 +22,16 @@ end
 
 function bullets:update(dt)
 
-        self.timer = self.timer +dt      
-            for k,v in pairs(self.shoots) do
+        self.timer = self.timer + dt
+            for _, v in pairs(self.shoots) do
                 if v.body then
-                    for key , shoot in pairs(self.shoots) do
+                    for key, shoot in pairs(self.shoots) do
                         shoot:setX(shoot:getX() + math.cos(shoot.angle) * 600 * dt)
                         shoot:setY(shoot:getY() + math.sin(shoot.angle) * 600 * dt)
                         if self.shotBy == 'player1' then
                             local b = world:queryCircleArea(shoot:getX(), shoot:getY(),3,{'player2'})
-                            if #b>0 then 
-                                for key, collider in pairs(b) do
+                            if #b>0 then
+                                for _, collider in pairs(b) do
                                     collider:destroy()
                                 end
                             end
@@ -39,8 +39,8 @@ function bullets:update(dt)
 
                         if self.shotBy == 'player2' then
                             local b = world:queryCircleArea(shoot:getX(), shoot:getY(),3,{'player1'})
-                            if #b>0 then 
-                                for key, collider in pairs(b) do
+                            if #b>0 then
+                                for _, collider in pairs(b) do
                                     collider:destroy()
                                 end
                             end
@@ -57,26 +57,23 @@ function bullets:update(dt)
                             end
                         end
                     end
-                    for k,v in pairs(self.shoots) do
+                    for _, sv in pairs(self.shoots) do
                         if self.timer>3 then
-                            local b = world:newCircleCollider(v:getX(),v:getY(),5)
+                            local b = world:newCircleCollider(sv:getX(),sv:getY(),5)
                             table.insert(self.shoots,b)
                             self.timer = 0
-                        end 
+                        end
                     end
                 end
             end
-                   
+
 
                 end
 
 function bullets:render()
-    for k,v in pairs(self.shoots) do
-        for k, v in pairs(self.shoots) do
-            if v.body then
-                love.graphics.draw(self.newImage,v:getX()-3,v:getY()-3,0,1.7,1.7)
-            end
+    for _, v in pairs(self.shoots) do
+        if v.body then
+            love.graphics.draw(self.newImage, v:getX()-3, v:getY()-3, 0, 1.7, 1.7)
         end
-        
     end
 end

@@ -48,12 +48,23 @@ globals = {
     "ScatterShot",
     "powersuplier",
     "Maps",
+
+    -- ── Legacy / partially-used globals ─────────────────────────────────────
+    -- count2: referenced in ScoreState:render() (state not reached in gameplay)
+    "count2",
+    -- sounds: referenced in Player:takeDamage() (function not called currently)
+    "sounds",
+    -- class_commons / common: cross-class-system compatibility shim in class.lua
+    "class_commons",
+    "common",
 }
 
 -- ── Exclusions ────────────────────────────────────────────────────────────────
--- Do not lint vendored third-party libraries.
+-- Do not lint vendored / third-party files that live outside libraries/.
 exclude_files = {
     "libraries/**",
+    "push.lua",   -- third-party: push screen-management library
+    "class.lua",  -- third-party: Matthias Richter's OOP helper
 }
 
 -- ── Warning suppressions ──────────────────────────────────────────────────────
@@ -65,4 +76,5 @@ ignore = {
 }
 
 -- ── Style settings ────────────────────────────────────────────────────────────
-max_line_length = 120
+-- Line-length is not enforced: LÖVE draw calls are naturally verbose.
+max_line_length = false

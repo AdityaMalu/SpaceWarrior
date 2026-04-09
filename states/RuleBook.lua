@@ -2,13 +2,13 @@ RuleBook= Class{__includes = BaseState}
 
 function RuleBook:init()
     self.bg = love.graphics.newImage("assets/rules.png")
-    self.timer =0 
+    self.timer =0
 end
 
 function RuleBook:update()
     if love.keyboard.isDown("return")  then
         gStateMachine:change("play")
-    end    
+    end
 
 
 end

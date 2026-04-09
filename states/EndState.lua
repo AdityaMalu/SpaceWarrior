@@ -23,17 +23,17 @@ function EndState:update(dt)
          PLAYER2_SCORE = 0
     end
 
-   
+
 end
 
 function  EndState:exit()
     self.sounds:stop()
 end
 
-  
+
 
 function EndState:render()
-    
+
     love.graphics.draw(self.background,0,0,0,WINDOW_WIDTH/self.background:getWidth(),WINDOW_HEIGHT/self.background:getHeight())
     love.graphics.setFont(self.font)
     if PLAYER1_SCORE ==6 then

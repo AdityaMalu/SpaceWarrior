@@ -106,12 +106,12 @@ function PlayState:shootScatterShot(shotBy)
 end
 
 function PlayState:dabbaplant()
-    
+
     self.totalpowersuplier = self.totalpowersuplier -1
     if self.totalpowersuplier <6 and self.totalpowersuplier>0 then
         table.insert(self.Powersuplier,powersuplier(math.random(100,1100),math.random(100,600),30,30,'powersuplier'))
-    end 
-    
+    end
+
 end
 
 function PlayState:update(dt)
@@ -154,10 +154,10 @@ function PlayState:update(dt)
                         if  v1:enter('maps') then
                             v1:destroy()
                         end
-                    end          
+                    end
                 end
             end
-            
+
         end
 
 
@@ -167,10 +167,10 @@ function PlayState:update(dt)
                     if  v1:enter('maps') then
                         v1:destroy()
                     end
-                    
+
                 end
             end
-            
+
         end
 
         if self.player1.collider.body then
@@ -181,11 +181,11 @@ function PlayState:update(dt)
                             v1:destroy()
                         end
                     end
-                    
-                    
+
+
                 end
             end
-            
+
         end
 
 
@@ -195,13 +195,13 @@ function PlayState:update(dt)
                     if  v1:enter('maps') then
                         v1:destroy()
                     end
-                    
+
                 end
             end
-            
+
         end
-        
-      
+
+
 
         if self.player1.collider.body then
             for key, laser in pairs(self.player1Lasers) do
@@ -222,7 +222,7 @@ function PlayState:update(dt)
           --  print(self.player1Bomb.growingradius)
             for key, bomb in pairs(self.player1Bomb) do
                 if bomb.collider.body then
-                    bomb:update(dt, self.player2)                   
+                    bomb:update(dt, self.player2)
                 end
             end
         end
@@ -262,11 +262,11 @@ function PlayState:update(dt)
             self.timer = 0
         end
 
-        
+
     else
         self.statechangetimer = self.statechangetimer +dt
 
-    
+
         if self.player1.collider.body then
             self.sounds:setVolume(0.05)
             self.blastsound:play()
@@ -275,8 +275,8 @@ function PlayState:update(dt)
                     if v1.body then
                             v1:destroy()
                     end
-                    
-                    
+
+
                 end
             end
             if self.statechangetimer>3 then
@@ -285,7 +285,7 @@ function PlayState:update(dt)
                 gStateMachine:change('newScore', "player1")
 
             end
-            
+
         else
 
             for k,v in pairs(self.Player2allBullet)do
@@ -293,8 +293,8 @@ function PlayState:update(dt)
                     if v1.body then
                             v1:destroy()
                     end
-                    
-                    
+
+
                 end
             end
             self.sounds:setVolume(0.05)
@@ -304,14 +304,14 @@ function PlayState:update(dt)
                 PLAYER2_SCORE = PLAYER2_SCORE + 1
                 gStateMachine:change('newScore', "player2")
             end
-            
+
         end
 
     end
 end
 
 function PlayState:exit()
-    
+
     self.sounds:stop()
     for k,v in pairs(self.Player1allBullet) do
         for k1, v1 in pairs(v.shoots) do
@@ -326,7 +326,7 @@ function PlayState:exit()
             if v1.body then
                 v1:destroy()
             end
-            
+
         end
     end
 
@@ -335,7 +335,7 @@ function PlayState:exit()
             if v1.body then
                 v1:destroy()
             end
-            
+
         end
     end
 
@@ -344,7 +344,7 @@ function PlayState:exit()
             if v1.body then
                 v1:destroy()
             end
-            
+
         end
     end
 
@@ -354,9 +354,9 @@ function PlayState:exit()
                 if v1.body then
                     v1:destroy()
                 end
-                
+
             end
-        
+
         end
     end
 
@@ -393,13 +393,13 @@ function PlayState:exit()
 
     -- for k,v in pairs(self.player1Lasers) do
     --    v.laser:destroy()
-        
+
     -- end
-    
-    -- for k,v in pairs(self.player2Lasers) do 
+
+    -- for k,v in pairs(self.player2Lasers) do
     --     v.laser:destroy()
     -- end
-    
+
   --self.player2.collider:destroy()
 --   self.player1.collider:destroy()
 
@@ -410,11 +410,11 @@ function PlayState:keypressed(key,dt)
     if key == 'escape' then
         love.event.quit()
     end
-   
+
     if(self.player1.collider.body and self.player2.collider.body) then
         if key == 'd' then
 
-        
+
                 local collision_data = self.player1.collider:getEnterCollisionData('powersuplier')
                 if collision_data ~= nil then
                     if collision_data.collider.choice == 1 then
@@ -428,15 +428,15 @@ function PlayState:keypressed(key,dt)
                         collision_data.collider.choice =0
                     elseif collision_data.collider.choice ==4 then
                         self.player1.angle = -self.player1.angle
-                        self.player2.angle = -self.player2.angle 
+                        self.player2.angle = -self.player2.angle
                         collision_data.collider.choice = 0
-                    end   
+                    end
                 end
             end
         self.whichpowerp1 = ""
     end
 
-    
+
     if (self.player2.collider.body and self.player2.collider.body) then
             if key == 'right' then
                     local collision_data = self.player2.collider:getEnterCollisionData('powersuplier')
@@ -457,7 +457,7 @@ function PlayState:keypressed(key,dt)
                         end
                     end
                 end
-           
+
             self.whichpowerp2 = ""
         end
 
@@ -478,7 +478,7 @@ function PlayState:render(dt)
     --if not self.ScoreBoard then
 
     love.graphics.draw(self.background,0,0,0,WINDOW_WIDTH/self.background:getWidth(),WINDOW_HEIGHT/self.background:getHeight())
-    
+
           self.player1:render()
           self.mappart1:render()
           self.mappart2:render()
@@ -488,7 +488,7 @@ function PlayState:render(dt)
           self.mappart6:render()
           self.mappart7:render()
           self.mappart8:render()
-          
+
 
       if self.player1.collider.body then
         love.graphics.draw(self.player1image,self.player1.collider:getX(),self.player1.collider:getY(),self.player1.angle+359.75,1,1,self.player1image:getWidth()/2,self.player1image:getHeight()/2)
@@ -512,11 +512,11 @@ function PlayState:render(dt)
             love.graphics.rectangle("fill",800,375,50,175)
             love.graphics.rectangle("fill",850,325,175,50)
         end
-        
+
        love.graphics.setColor(1,1,1)
         --love.graphics.draw(self.player1image,(self.player1.collider:getX())+45*math.cos(self.player1.angle),(self.player1.collider:getY())+45*math.sin(self.player1.angle),self.player1.angle+360)
-        
-          
+
+
       end
 
 
@@ -545,12 +545,12 @@ function PlayState:render(dt)
             love.graphics.rectangle("fill",800,375,50,175)
             love.graphics.rectangle("fill",850,325,175,50)
         end
-        
+
        love.graphics.setColor(1,1,1)
-              
+
       end
 
-  
+
       for key, value in pairs(self.player1Lasers) do
           value:render()
       end
@@ -558,7 +558,7 @@ function PlayState:render(dt)
       for key, value in pairs(self.player2Lasers) do
         value:render()
     end
-  
+
       for key, value in pairs(self.Player1allBullet) do
           value:render()
       end
@@ -576,13 +576,13 @@ function PlayState:render(dt)
             end
             self.display = 0
         end
-        
+
         if v.growingradius>0 then
             love.graphics.setColor(255,165,0,0.5)
             love.graphics.circle("fill",v.collider:getX(),v.collider:getY(),v.growingradius)
         end
         love.graphics.setColor(1,1,1)
-        
+
 
       end
 
@@ -603,9 +603,9 @@ function PlayState:render(dt)
     end
 
       for k,v in pairs(self.Powersuplier)do
-            v:render()        
+            v:render()
       end
-  
+
       for k,v in pairs(self.player1ScatterShot)do
         v:render()
       end
@@ -615,11 +615,11 @@ function PlayState:render(dt)
       end
     --   love.graphics.print(count1)
     --   love.graphics.print(count2,0,50)
-      
+
       love.graphics.print(self.whichpowerp1,20,20)
       love.graphics.print(self.whichpowerp2,WINDOW_WIDTH-150,20)
-  
-  
+
+
       if self.player1.collider:enter("powersuplier") then
           local collision_data = self.player1.collider:getEnterCollisionData('powersuplier')
           if collision_data.collider.choice ==1 then
@@ -637,9 +637,9 @@ function PlayState:render(dt)
           elseif collision_data.collider.choice ==4 then
                 self.whichpowerp1 = "Reverse"
           end
-          
+
       end
-  
+
       if self.player2.collider:enter("powersuplier") then
           local collision_data = self.player2.collider:getEnterCollisionData('powersuplier')
           if collision_data.collider.choice ==1 then
@@ -657,17 +657,16 @@ function PlayState:render(dt)
                 self.whichpowerp2 = "Reverse"
               --love.graphics.print("Oops No Powerup",20,20)
           end
-          
+
       end
     --end
-  
+
       -- for key, value in pairs(self.Player2allBullet) do
       --     value:render()
       -- end
-  
+
       -- if self.player1.destroy or self.player2.destroy then
       --     love.graphics.print("Game Ended",100,100)
       -- end
     --   love.graphics.print('Memory actually used (in kB): ' .. collectgarbage('count'), 500,20)
   end
-  

@@ -53,7 +53,7 @@ function StateMachine:change(stateName, enterParams)
 	self.current:exit()
 	self.g=stateName
 	self.current = self.states[stateName]()
-	self.current:enter(enterParams,arg2)
+	self.current:enter(enterParams, nil)
 end
 
 function StateMachine:update(dt)

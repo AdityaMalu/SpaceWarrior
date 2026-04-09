@@ -21,7 +21,7 @@ function powersuplier:update(dt)
         --         v:destroy()
         --     end
         -- end
-    
+
 end
 
 function powersuplier:enter()
