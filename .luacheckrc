@@ -16,6 +16,10 @@ globals = {
     -- Score globals (set in main.lua, mutated in PlayState)
     "PLAYER1_SCORE",
     "PLAYER2_SCORE",
+    "PLAYER_SCORES",  -- N-player score table (index = player ID)
+
+    -- N-player config (set in main.lua, read by weapons/players)
+    "MAX_PLAYERS",
 
     -- Physics world (set in PlayState:init, shared globally)
     "world",

@@ -7,327 +7,278 @@ require 'modules.powersuplier'
 require 'modules.maps'
 math.randomseed(os.time())
 
--- count1 = 0
--- count2 = 0
+-- Equal-mass elastic collision between two Player objects (shared helper)
+local function resolveElasticCollision(pa, pb)
+    local pax = pa.collider:getX()
+    local pay = pa.collider:getY()
+    local pbx = pb.collider:getX()
+    local pby = pb.collider:getY()
+    local dx   = pbx - pax
+    local dy   = pby - pay
+    local dist = math.sqrt(dx * dx + dy * dy)
+    local minDist = pa.radius + pb.radius
+    if dist >= minDist or dist <= 0 then return end
+
+    local nx = dx / dist
+    local ny = dy / dist
+    local vax = math.cos(pa.angle) * pa.speed
+    local vay = math.sin(pa.angle) * pa.speed
+    local vbx = math.cos(pb.angle) * pb.speed
+    local vby = math.sin(pb.angle) * pb.speed
+    local van = vax * nx + vay * ny
+    local vbn = vbx * nx + vby * ny
+
+    if van - vbn > 0 then   -- only resolve if approaching
+        local r = 0.75
+        local new_van = vbn * r
+        local new_vbn = van * r
+        local new_vax = vax + (new_van - van) * nx
+        local new_vay = vay + (new_van - van) * ny
+        local new_vbx = vbx + (new_vbn - vbn) * nx
+        local new_vby = vby + (new_vbn - vbn) * ny
+        local spda = math.sqrt(new_vax * new_vax + new_vay * new_vay)
+        local spdb = math.sqrt(new_vbx * new_vbx + new_vby * new_vby)
+        local MIN_SPEED, MAX_SPEED = 180, 350
+        pa.speed = math.max(MIN_SPEED, math.min(MAX_SPEED, spda))
+        pb.speed = math.max(MIN_SPEED, math.min(MAX_SPEED, spdb))
+        if spda > 0.1 then pa.angle = math.atan2(new_vay, new_vax) end
+        if spdb > 0.1 then pb.angle = math.atan2(new_vby, new_vbx) end
+    end
+    local overlap = (minDist - dist) / 2 + 1
+    pa.collider:setX(pax - nx * overlap)
+    pa.collider:setY(pay - ny * overlap)
+    pb.collider:setX(pbx + nx * overlap)
+    pb.collider:setY(pby + ny * overlap)
+end
+
 function PlayState:init()
-    self.player1 = Player(40, WINDOW_HEIGHT/2, 30, 'player1')
-    self.player1rotation = 0
-    self.player1image = love.graphics.newImage("assets/player1.png")
-    self.player2 = Player(WINDOW_WIDTH -40, WINDOW_HEIGHT/2, 30, 'player2')
-    self.player2rotation = 0
-    self.player2image  = love.graphics.newImage("assets/player2.png")
-    self.Powersuplier = {}
-    self.player1Lasers = {}
-    self.player2Lasers = {}
-    self.player1Bomb = {}
+    -- Number of players for this session (Phase 3 will set from network lobby)
+    local NUM_PLAYERS = 2
+
+    -- Player images (add more entries for players 3, 4 …)
+    self.playerimages = {
+        love.graphics.newImage("assets/player1.png"),
+        love.graphics.newImage("assets/player2.png"),
+    }
+
+    -- Default keyboard controls per local player slot
+    local controlMap = {
+        [1] = { rotate = 'a',    shoot = 's',  usepower = 'd'     },
+        [2] = { rotate = 'left', shoot = 'up', usepower = 'right' },
+    }
+
+    -- Spawn positions (scales to 4 players; Phase 3 may override)
+    local spawnPos = {
+        { x = 40,              y = WINDOW_HEIGHT / 2 },
+        { x = WINDOW_WIDTH-40, y = WINDOW_HEIGHT / 2 },
+        { x = WINDOW_WIDTH/2,  y = 40                },
+        { x = WINDOW_WIDTH/2,  y = WINDOW_HEIGHT-40  },
+    }
+
+    -- Create players
+    self.players = {}
+    for i = 1, NUM_PLAYERS do
+        local sp = spawnPos[i]
+        local p  = Player(i, sp.x, sp.y, 30)
+        p.isLocal  = true                   -- both local for now; Phase 3 sets only one
+        p.controls = controlMap[i] or {}
+        self.players[i] = p
+    end
+
+    -- Per-player weapon / power tables (indexed by player ID)
+    self.lasers       = {}
+    self.bombs        = {}
+    self.scattershots = {}
+    self.allBullets   = {}
+    self.whichpower   = {}
+    self.pendingpower = {}
+    for i = 1, NUM_PLAYERS do
+        self.lasers[i]       = {}
+        self.bombs[i]        = {}
+        self.scattershots[i] = {}
+        self.allBullets[i]   = {}
+        self.whichpower[i]   = ""
+        self.pendingpower[i] = 0
+    end
+
+    self.Powersuplier     = {}
+    self.background       = love.graphics.newImage("assets/Background/b3.png")
     self.player1bombimage = love.graphics.newImage("assets/Bomb_12x12.png")
-    self.player2Bomb = {}
-    self.player1ScatterShot = {}
-    self.player2ScatterShot = {}
-    self.Player1allBullet = {}
-    self.Player2allBullet = {}
-    self.timer = 0
-    self.whichpowerp1 = ""
-    self.whichpowerp2 = ""
-    self.background = love.graphics.newImage("assets/Background/b3.png")
     self.totalpowersuplier = 6
-    self.mappart1 = Maps(300,150,50,175,5)
-    self.mappart2 = Maps(125.,325,175,50,5)
-    self.mappart3 = Maps(300,375,50,175,5)
-    self.mappart4 = Maps(350,325,175,50,5)
-    self.mappart5 = Maps(800,150,50,175,5)
-    self.mappart6 = Maps(625.,325,175,50,5)
-    self.mappart7 = Maps(800,375,50,175,5)
-    self.mappart8 = Maps(850,325,175,50,5)
-    self.sounds = love.audio.newSource("assets/Sounds/Space Heroes.ogg","static")
+    self.timer            = 0
+    self.display          = 0
+    self.statechangetimer = 0
+    self.hasGameEnded     = false
+
+    -- Map obstacles (table — easy to extend or randomise later)
+    self.maps = {
+        Maps(300, 150,  50, 175, 5),
+        Maps(125, 325, 175,  50, 5),
+        Maps(300, 375,  50, 175, 5),
+        Maps(350, 325, 175,  50, 5),
+        Maps(800, 150,  50, 175, 5),
+        Maps(625, 325, 175,  50, 5),
+        Maps(800, 375,  50, 175, 5),
+        Maps(850, 325, 175,  50, 5),
+    }
+    -- Rectangle coords mirroring Maps() init args (for rendering)
+    self.mapRects = {
+        {300, 150,  50, 175}, {125, 325, 175,  50},
+        {300, 375,  50, 175}, {350, 325, 175,  50},
+        {800, 150,  50, 175}, {625, 325, 175,  50},
+        {800, 375,  50, 175}, {850, 325, 175,  50},
+    }
+
+    self.sounds = love.audio.newSource("assets/Sounds/Space Heroes.ogg", "static")
     self.sounds:setVolume(0.18)
     self.sounds:setLooping(true)
     self.sounds:play()
-    self.statechangetimer = 0
-    self.blastsound = love.audio.newSource("assets/Sounds/deathexplosion.mp3","static")
+    self.blastsound  = love.audio.newSource("assets/Sounds/deathexplosion.mp3", "static")
     self.blastsound:setVolume(0.5)
-    self.bulletsound = love.audio.newSource('assets/Sounds/bulletshootsound.mp3','static')
+    self.bulletsound = love.audio.newSource('assets/Sounds/bulletshootsound.mp3', 'static')
     self.bulletsound:setVolume(0.2)
-    self.display = 0
-
-    -- pending power: stores which powerup each player collected (0 = none)
-    self.p1pendingpower = 0
-    self.p2pendingpower = 0
-
-    self.hasGameEnded = false
 end
 
-function PlayState:shootBullet(shotBy)
-    -- if shotBy == "player1" then
-    --     table.insert(self.Player1allBullet,bullets(self.player1.collider:getX(),self.player1.collider:getY(),math.cos(self.player1.angle)*40000 , math.sin(self.player1.angle)*40000 ,'player1'))
-    -- elseif shotBy == "player2" then
-    --     table.insert(self.Player2allBullet,bullets(self.player2.collider:getX(),self.player2.collider:getY(),math.cos(self.player2.angle)*40000 , math.sin(self.player2.angle)*40000 ,'player2'))
-    -- end
-    if self.player1.collider.body then
-        if shotBy == "player1" and self.player1.totalbullets>0 then
-            self.player1.totalbullets = self.player1.totalbullets -1
-                table.insert(self.Player1allBullet,bullets(self.player1.collider:getX(),self.player1.collider:getY(),math.cos(self.player1.angle)+ self.player1.collider:getX() , math.sin(self.player1.angle)+self.player1.collider:getY() ,'player1'))
+-- id = numeric player ID (1, 2, 3 …)
+function PlayState:shootBullet(id)
+    local p = self.players[id]
+    if p and p.collider.body and p.totalbullets > 0 then
+        p.totalbullets = p.totalbullets - 1
+        table.insert(self.allBullets[id], bullets(
+            p.collider:getX(), p.collider:getY(),
+            math.cos(p.angle) + p.collider:getX(),
+            math.sin(p.angle) + p.collider:getY(),
+            id
+        ))
+    end
+end
+
+function PlayState:shootLaser(id)
+    local p = self.players[id]
+    if p and p.collider.body then
+        table.insert(self.lasers[id], Laser(
+            p.collider:getX(), p.collider:getY(),
+            math.cos(p.angle) * 4000, math.sin(p.angle) * 4000,
+            id
+        ))
+    end
+end
+
+function PlayState:plantBomb(id)
+    local p = self.players[id]
+    if p and p.collider.body then
+        table.insert(self.bombs[id], Bomb(p.collider:getX(), p.collider:getY(), id))
+    end
+end
+
+function PlayState:shootScatterShot(id)
+    local p = self.players[id]
+    if p and p.collider.body then
+        table.insert(self.scattershots[id], ScatterShot(p.collider:getX(), p.collider:getY(), id))
+    end
+end
+
+-- Activate the stored power for player `id` and clear it from HUD
+function PlayState:usePower(id)
+    local power = self.pendingpower[id]
+    if power == 1 then
+        self:shootLaser(id)
+    elseif power == 2 then
+        self:plantBomb(id)
+    elseif power == 3 then
+        self:shootScatterShot(id)
+    elseif power == 4 then
+        -- Reverse: flip ALL players' angles (keeps the chaos symmetric)
+        for _, p in ipairs(self.players) do
+            p.angle = -p.angle
         end
     end
-
-    if self.player2.collider.body then
-        if shotBy == "player2"  and self.player2.totalbullets>0 then
-            self.player2.totalbullets = self.player2.totalbullets -1
-                table.insert(self.Player2allBullet,bullets(self.player2.collider:getX(),self.player2.collider:getY(),math.cos(self.player2.angle)+self.player2.collider:getX() , math.sin(self.player2.angle)+self.player2.collider:getY() ,'player2'))
-        end
-
-    end
-
-
-end
-
-function PlayState:shootLaser(shotBy)
-    if shotBy == 'player1' then
-        assert(self.player1.collider.body, "player1 body does not exist")
-        table.insert(self.player1Lasers, Laser(self.player1.collider:getX(), self.player1.collider:getY(), math.cos(self.player1.angle) * 4000, math.sin(self.player1.angle) * 4000, 'player1'))
-    elseif shotBy == 'player2' then
-        assert(self.player2.collider.body, "player 2 body not found")
-        table.insert(self.player2Lasers, Laser(self.player2.collider:getX(), self.player2.collider:getY(), math.cos(self.player2.angle) * 4000, math.sin(self.player2.angle) * 4000, 'player2'))
-    end
-end
-
-function PlayState:plantBomb(shotBy)
-    if shotBy == 'player1' then
-        table.insert(self.player1Bomb, Bomb(self.player1.collider:getX(), self.player1.collider:getY(), 'player1'))
-    elseif shotBy == 'player2' then
-        table.insert(self.player2Bomb, Bomb(self.player2.collider:getX(), self.player2.collider:getY(), 'player2'))
-    end
-end
-
-function PlayState:shootScatterShot(shotBy)
-    if shotBy == 'player1' then
-        table.insert(self.player1ScatterShot, ScatterShot(self.player1.collider:getX(), self.player1.collider:getY(), 'player1'))
-    end
-    if shotBy == 'player2' then
-        table.insert(self.player2ScatterShot,ScatterShot(self.player2.collider:getX(), self.player2.collider:getY(), 'player2'))
-    end
+    self.pendingpower[id] = 0
+    self.whichpower[id]   = ""
 end
 
 function PlayState:dabbaplant()
-
-    self.totalpowersuplier = self.totalpowersuplier -1
-    if self.totalpowersuplier <6 and self.totalpowersuplier>0 then
-        table.insert(self.Powersuplier,powersuplier(math.random(100,1100),math.random(100,600),30,30,'powersuplier'))
+    self.totalpowersuplier = self.totalpowersuplier - 1
+    if self.totalpowersuplier < 6 and self.totalpowersuplier > 0 then
+        table.insert(self.Powersuplier,
+            powersuplier(math.random(100, 1100), math.random(100, 600), 30, 30, 'powersuplier'))
     end
-
 end
 
 function PlayState:update(dt)
+    local powerNames = { [1]="Laser", [2]="Bomb", [3]="Scatter Shot", [4]="Reverse" }
 
-    if self.player1.collider.body and self.player2.collider.body then
-        self.timer = self.timer +dt
+    -- Count alive players
+    local alivePlayers = {}
+    for i, p in ipairs(self.players) do
+        if p.collider.body then
+            table.insert(alivePlayers, i)
+        end
+    end
+
+    if #alivePlayers > 1 then
+        self.timer   = self.timer   + dt
         self.display = self.display + dt
-        if self.player1.collider.body then
-            self.player1:update(dt)
-        end
-        if self.player2.collider.body then
-            self.player2:update(dt)
+
+        -- Update movement for every alive player
+        for _, i in ipairs(alivePlayers) do
+            self.players[i]:update(dt)
         end
 
-        -- Power collection: save choice BEFORE destroying collider, set HUD text
-        local powerNames = { [1]="Laser", [2]="Bomb", [3]="Scatter Shot", [4]="Reverse" }
-
-        if self.player1.collider.body then
-            if self.player1.collider:enter("powersuplier") then
-                local cd = self.player1.collider:getEnterCollisionData('powersuplier')
+        -- Power collection: save choice before collider is destroyed
+        for _, i in ipairs(alivePlayers) do
+            local p = self.players[i]
+            if p.collider:enter("powersuplier") then
+                local cd = p.collider:getEnterCollisionData('powersuplier')
                 local choice = cd.collider.choice
-                self.p1pendingpower = choice
-                self.whichpowerp1 = powerNames[choice] or "???"
-                if cd.collider.body then
-                    cd.collider:destroy()
+                self.pendingpower[i] = choice
+                self.whichpower[i]   = powerNames[choice] or "???"
+                if cd.collider.body then cd.collider:destroy() end
+            end
+        end
+
+        -- Update bullets + destroy on map hit
+        for _, i in ipairs(alivePlayers) do
+            for _, v in pairs(self.allBullets[i]) do
+                v:update(dt)
+                for _, v1 in pairs(v.shoots) do
+                    if v1.body and v1:enter('maps') then v1:destroy() end
                 end
             end
         end
 
-        if self.player2.collider.body then
-            if self.player2.collider:enter("powersuplier") then
-                local cd = self.player2.collider:getEnterCollisionData('powersuplier')
-                local choice = cd.collider.choice
-                self.p2pendingpower = choice
-                self.whichpowerp2 = powerNames[choice] or "???"
-                if cd.collider.body then
-                    cd.collider:destroy()
+        -- Update lasers
+        for _, i in ipairs(alivePlayers) do
+            for _, laser in pairs(self.lasers[i]) do
+                if laser.laser.body then laser:update(dt) end
+            end
+        end
+
+        -- Update bombs (Bomb:update now queries targets internally)
+        for _, i in ipairs(alivePlayers) do
+            for _, bomb in pairs(self.bombs[i]) do
+                if bomb.collider.body then bomb:update(dt) end
+            end
+        end
+
+        -- Update scatter shots + destroy on map hit
+        for _, i in ipairs(alivePlayers) do
+            for _, ss in pairs(self.scattershots[i]) do
+                ss:update(dt)
+                for _, v1 in pairs(ss.shots) do
+                    if v1.body and v1:enter('maps') then v1:destroy() end
                 end
             end
         end
 
-        if self.player1.collider.body then
-            for k,v in pairs(self.Player1allBullet)do
-                for k1,v1 in pairs(v.shoots)do
-                    if v1.body then
-                        if  v1:enter('maps') then
-                            v1:destroy()
-                        end
-                    end
+        -- Elastic collision: check every unique pair of alive players
+        for a = 1, #alivePlayers do
+            for b = a + 1, #alivePlayers do
+                local pa = self.players[alivePlayers[a]]
+                local pb = self.players[alivePlayers[b]]
+                if pa.collider.body and pb.collider.body then
+                    resolveElasticCollision(pa, pb)
                 end
-            end
-
-        end
-
-
-        if self.player2.collider.body then
-            for k,v in pairs(self.Player2allBullet)do
-                for k1,v1 in pairs(v.shoots)do
-                    if  v1:enter('maps') then
-                        v1:destroy()
-                    end
-
-                end
-            end
-
-        end
-
-        if self.player1.collider.body then
-            for k,v in pairs(self.player1ScatterShot)do
-                for k1,v1 in pairs(v.shots)do
-                    if v1.body then
-                        if  v1:enter('maps') then
-                            v1:destroy()
-                        end
-                    end
-
-
-                end
-            end
-
-        end
-
-
-        if self.player2.collider.body then
-            for k,v in pairs(self.player2ScatterShot)do
-                for k1,v1 in pairs(v.shots)do
-                    if  v1:enter('maps') then
-                        v1:destroy()
-                    end
-
-                end
-            end
-
-        end
-
-
-
-        if self.player1.collider.body then
-            for key, laser in pairs(self.player1Lasers) do
-                if laser.laser.body then
-                    laser:update(dt)
-                end
-            end
-        end
-
-        if self.player2.collider.body then
-            for key, laser in pairs(self.player2Lasers) do
-                if laser.laser.body then
-                    laser:update(dt)
-                end
-            end
-        end
-        if self.player2.collider.body then
-          --  print(self.player1Bomb.growingradius)
-            for key, bomb in pairs(self.player1Bomb) do
-                if bomb.collider.body then
-                    bomb:update(dt, self.player2)
-                end
-            end
-        end
-
-        if self.player1.collider.body then
-            for key, bomb in pairs(self.player2Bomb) do
-                if bomb.collider.body then
-                    bomb:update(dt, self.player1)
-                end
-            end
-        end
-        if self.player1.collider.body then
-            for key, value in pairs(self.player1ScatterShot) do
-                value:update(dt)
-            end
-        end
-
-        if self.player2.collider.body then
-            for key, value in pairs(self.player2ScatterShot) do
-                value:update(dt)
-            end
-        end
-
-        if self.player1.collider.body then
-            for key , value in pairs(self.Player1allBullet) do
-                value:update(dt)
-            end
-        end
-        if self.player2.collider.body then
-            for key,value in pairs(self.Player2allBullet) do
-                value:update(dt)
-            end
-        end
-
-        -- Player-player elastic collision (equal-mass billiard-ball physics)
-        if self.player1.collider.body and self.player2.collider.body then
-            local p1x = self.player1.collider:getX()
-            local p1y = self.player1.collider:getY()
-            local p2x = self.player2.collider:getX()
-            local p2y = self.player2.collider:getY()
-            local dx   = p2x - p1x
-            local dy   = p2y - p1y
-            local dist = math.sqrt(dx * dx + dy * dy)
-            local minDist = self.player1.radius + self.player2.radius
-
-            if dist < minDist and dist > 0 then
-                -- Unit collision normal (p1 → p2)
-                local nx = dx / dist
-                local ny = dy / dist
-
-                -- Velocity vectors from current angle + speed
-                local v1x = math.cos(self.player1.angle) * self.player1.speed
-                local v1y = math.sin(self.player1.angle) * self.player1.speed
-                local v2x = math.cos(self.player2.angle) * self.player2.speed
-                local v2y = math.sin(self.player2.angle) * self.player2.speed
-
-                -- Scalar velocity along collision normal for each player
-                local v1n = v1x * nx + v1y * ny
-                local v2n = v2x * nx + v2y * ny
-
-                -- Only resolve if they are actually approaching (not already separating)
-                if v1n - v2n > 0 then
-                    local restitution = 0.75  -- 0=perfectly inelastic, 1=fully elastic
-
-                    -- Equal-mass: swap normal components scaled by restitution
-                    local new_v1n = v2n * restitution
-                    local new_v2n = v1n * restitution
-
-                    -- Rebuild velocity vectors (tangential component stays the same)
-                    local new_v1x = v1x + (new_v1n - v1n) * nx
-                    local new_v1y = v1y + (new_v1n - v1n) * ny
-                    local new_v2x = v2x + (new_v2n - v2n) * nx
-                    local new_v2y = v2y + (new_v2n - v2n) * ny
-
-                    -- Convert back to angle + scalar speed, clamp to valid range
-                    local spd1 = math.sqrt(new_v1x * new_v1x + new_v1y * new_v1y)
-                    local spd2 = math.sqrt(new_v2x * new_v2x + new_v2y * new_v2y)
-                    local MIN_SPEED, MAX_SPEED = 180, 350
-
-                    self.player1.speed = math.max(MIN_SPEED, math.min(MAX_SPEED, spd1))
-                    self.player2.speed = math.max(MIN_SPEED, math.min(MAX_SPEED, spd2))
-
-                    if spd1 > 0.1 then
-                        self.player1.angle = math.atan2(new_v1y, new_v1x)
-                    end
-                    if spd2 > 0.1 then
-                        self.player2.angle = math.atan2(new_v2y, new_v2x)
-                    end
-                end
-
-                -- Positional correction: push apart to eliminate overlap
-                local overlap = (minDist - dist) / 2 + 1
-                self.player1.collider:setX(p1x - nx * overlap)
-                self.player1.collider:setY(p1y - ny * overlap)
-                self.player2.collider:setX(p2x + nx * overlap)
-                self.player2.collider:setY(p2y + ny * overlap)
             end
         end
 
@@ -336,148 +287,67 @@ function PlayState:update(dt)
             self.timer = 0
         end
 
-
     else
-        self.statechangetimer = self.statechangetimer +dt
+        -- One or zero players remain: game over
+        self.statechangetimer = self.statechangetimer + dt
+        self.sounds:setVolume(0.05)
+        self.blastsound:play()
 
-
-        if self.player1.collider.body then
-            self.sounds:setVolume(0.05)
-            self.blastsound:play()
-            for k,v in pairs(self.Player1allBullet)do
-                for k1,v1 in pairs(v.shoots)do
-                    if v1.body then
-                            v1:destroy()
-                    end
-
-
+        if self.statechangetimer > 3 then
+            self.blastsound:stop()
+            local winnerId = alivePlayers[1]   -- nil if draw
+            if winnerId then
+                PLAYER_SCORES[winnerId] = (PLAYER_SCORES[winnerId] or 0) + 1
+                -- Keep legacy score globals in sync for the existing score states
+                if winnerId == 1 then
+                    PLAYER1_SCORE = PLAYER1_SCORE + 1
+                elseif winnerId == 2 then
+                    PLAYER2_SCORE = PLAYER2_SCORE + 1
                 end
+                gStateMachine:change('newScore', 'player'..winnerId)
+            else
+                gStateMachine:change('newScore', 'player1')   -- draw fallback
             end
-            if self.statechangetimer>3 then
-                self.blastsound:stop()
-                PLAYER1_SCORE = PLAYER1_SCORE + 1
-                gStateMachine:change('newScore', "player1")
-
-            end
-
-        else
-
-            for k,v in pairs(self.Player2allBullet)do
-                for k1,v1 in pairs(v.shoots)do
-                    if v1.body then
-                            v1:destroy()
-                    end
-
-
-                end
-            end
-            self.sounds:setVolume(0.05)
-            self.blastsound:play()
-            if self.statechangetimer>3 then
-                self.blastsound:stop()
-                PLAYER2_SCORE = PLAYER2_SCORE + 1
-                gStateMachine:change('newScore', "player2")
-            end
-
         end
-
     end
 end
 
 function PlayState:exit()
-
     self.sounds:stop()
-    for k,v in pairs(self.Player1allBullet) do
-        for k1, v1 in pairs(v.shoots) do
-            if v1.body then
-                v1:destroy()
+
+    -- Destroy all bullets for every player
+    for i = 1, #self.players do
+        for _, v in pairs(self.allBullets[i]) do
+            for _, v1 in pairs(v.shoots) do
+                if v1.body then v1:destroy() end
             end
+        end
+        for _, v in pairs(self.scattershots[i]) do
+            for _, v1 in pairs(v.shots) do
+                if v1.body then v1:destroy() end
+            end
+        end
+        for _, v in pairs(self.bombs[i]) do
+            if v.collider.body then v.collider:destroy() end
         end
     end
 
-    for k,v in pairs(self.Player2allBullet) do
-        for k1, v1 in pairs(v.shoots) do
-            if v1.body then
-                v1:destroy()
-            end
-
+    -- Destroy powerup suppliers
+    for _, v in pairs(self.Powersuplier) do
+        for _, v1 in pairs(v.dabba) do
+            if v1.body then v1:destroy() end
         end
     end
 
-    for k,v in pairs(self.player1ScatterShot) do
-        for k1,v1 in pairs(v.shots) do
-            if v1.body then
-                v1:destroy()
-            end
-
-        end
+    -- Destroy player colliders
+    for _, p in ipairs(self.players) do
+        if p.collider.body then p.collider:destroy() end
     end
 
-    for k, v in pairs(self.player2ScatterShot) do
-        for k1, v1 in pairs(v.shots) do
-            if v1.body then
-                v1:destroy()
-            end
-
-        end
+    -- Destroy map colliders
+    for _, m in ipairs(self.maps) do
+        if m.collider.body then m.collider:destroy() end
     end
-
-    for k,v in pairs(self.Powersuplier) do
-        for k1,v1 in pairs(v.dabba) do
-            if v1.body then
-                if v1.body then
-                    v1:destroy()
-                end
-
-            end
-
-        end
-    end
-
-    if self.player2.collider.body then
-        self.player2.collider:destroy()
-        self.mappart1.collider:destroy()
-        self.mappart2.collider:destroy()
-        self.mappart3.collider:destroy()
-        self.mappart4.collider:destroy()
-        self.mappart5.collider:destroy()
-        self.mappart6.collider:destroy()
-        self.mappart7.collider:destroy()
-        self.mappart8.collider:destroy()
-    end
-    if self.player1.collider.body then
-        self.player1.collider:destroy()
-        self.mappart1.collider:destroy()
-        self.mappart2.collider:destroy()
-        self.mappart3.collider:destroy()
-        self.mappart4.collider:destroy()
-        self.mappart5.collider:destroy()
-        self.mappart6.collider:destroy()
-        self.mappart7.collider:destroy()
-        self.mappart8.collider:destroy()
-    end
-
-    for k,v in pairs(self.player1Bomb) do
-        v.collider:destroy()
-    end
-
-    for k,v in pairs(self.player2Bomb) do
-        v.collider:destroy()
-    end
-
-    -- for k,v in pairs(self.player1Lasers) do
-    --    v.laser:destroy()
-
-    -- end
-
-    -- for k,v in pairs(self.player2Lasers) do
-    --     v.laser:destroy()
-    -- end
-
-  --self.player2.collider:destroy()
---   self.player1.collider:destroy()
-
-
 end
 
 function PlayState:keypressed(key)
@@ -485,214 +355,94 @@ function PlayState:keypressed(key)
         love.event.quit()
     end
 
-    if self.player1.collider.body and self.player2.collider.body then
-        -- Player 1 fires their stored power with D
-        if key == 'd' and self.p1pendingpower > 0 then
-            if self.p1pendingpower == 1 then
-                self:shootLaser('player1')
-            elseif self.p1pendingpower == 2 then
-                self:plantBomb('player1')
-            elseif self.p1pendingpower == 3 then
-                self:shootScatterShot('player1')
-            elseif self.p1pendingpower == 4 then
-                self.player1.angle = -self.player1.angle
-                self.player2.angle = -self.player2.angle
+    -- Each local player's shoot and usepower keys are driven by their controls table
+    for i, p in ipairs(self.players) do
+        if p.isLocal and p.collider.body and p.controls then
+            if key == p.controls.shoot then
+                self.bulletsound:play()
+                self:shootBullet(i)
             end
-            self.p1pendingpower = 0
-            self.whichpowerp1 = ""   -- clear HUD only after power is used
-        end
-
-        -- Player 2 fires their stored power with Right arrow
-        if key == 'right' and self.p2pendingpower > 0 then
-            if self.p2pendingpower == 1 then
-                self:shootLaser('player2')
-            elseif self.p2pendingpower == 2 then
-                self:plantBomb('player2')
-            elseif self.p2pendingpower == 3 then
-                self:shootScatterShot('player2')
-            elseif self.p2pendingpower == 4 then
-                self.player1.angle = -self.player1.angle
-                self.player2.angle = -self.player2.angle
+            if key == p.controls.usepower and self.pendingpower[i] > 0 then
+                self:usePower(i)
             end
-            self.p2pendingpower = 0
-            self.whichpowerp2 = ""   -- clear HUD only after power is used
         end
-    end
-
-    if key == 's' then
-        self.bulletsound:play()
-        self:shootBullet('player1')
-        --self.bulletsound:stop()
-    end
-
-    if key =='up' then
-        self.bulletsound:play()
-        self:shootBullet('player2')
-        --self.bulletsound:stop()
     end
 end
 
-function PlayState:render(dt)
-    --if not self.ScoreBoard then
+function PlayState:render()
+    -- Background
+    love.graphics.draw(self.background, 0, 0, 0,
+        WINDOW_WIDTH  / self.background:getWidth(),
+        WINDOW_HEIGHT / self.background:getHeight())
 
-    love.graphics.draw(self.background,0,0,0,WINDOW_WIDTH/self.background:getWidth(),WINDOW_HEIGHT/self.background:getHeight())
-
-          self.player1:render()
-          self.mappart1:render()
-          self.mappart2:render()
-          self.mappart3:render()
-          self.mappart4:render()
-          self.mappart5:render()
-          self.mappart6:render()
-          self.mappart7:render()
-          self.mappart8:render()
-
-
-      if self.player1.collider.body then
-        love.graphics.draw(self.player1image,self.player1.collider:getX(),self.player1.collider:getY(),self.player1.angle+359.75,1,1,self.player1image:getWidth()/2,self.player1image:getHeight()/2)
-        self.mappart1:render()
-        self.mappart2:render()
-        self.mappart3:render()
-        self.mappart4:render()
-        self.mappart5:render()
-        self.mappart6:render()
-        self.mappart7:render()
-        self.mappart8:render()
-        if self.mappart1.collider.body then
-            love.graphics.setColor(0.9,0.4,0.4)
-
-            love.graphics.rectangle("fill",300,150,50,175)
-            love.graphics.rectangle("fill",125.,325,175,50)
-            love.graphics.rectangle("fill",300,375,50,175)
-            love.graphics.rectangle("fill",350,325,175,50)
-            love.graphics.rectangle("fill",800,150,50,175)
-            love.graphics.rectangle("fill",625.,325,175,50)
-            love.graphics.rectangle("fill",800,375,50,175)
-            love.graphics.rectangle("fill",850,325,175,50)
+    -- Map obstacles (draw once, only while colliders are alive)
+    if #self.maps > 0 and self.maps[1].collider.body then
+        love.graphics.setColor(0.9, 0.4, 0.4)
+        for _, rect in ipairs(self.mapRects) do
+            love.graphics.rectangle("fill", rect[1], rect[2], rect[3], rect[4])
         end
-
-       love.graphics.setColor(1,1,1)
-        --love.graphics.draw(self.player1image,(self.player1.collider:getX())+45*math.cos(self.player1.angle),(self.player1.collider:getY())+45*math.sin(self.player1.angle),self.player1.angle+360)
-
-
-      end
-
-
-      if self.player2.collider.body then
-
-        self.player2:render()
-        --love.graphics.draw(self.player2image,(self.player2.collider:getX())+45*math.cos(self.player2.angle),(self.player2.collider:getY())+45*math.sin(self.player2.angle),self.player2.angle+360)
-        love.graphics.draw(self.player2image,self.player2.collider:getX(),self.player2.collider:getY(),self.player2.angle+359.75,1,1,self.player2image:getWidth()/2,self.player2image:getHeight()/2)
-        self.mappart1:render()
-        self.mappart2:render()
-        self.mappart3:render()
-        self.mappart4:render()
-        self.mappart5:render()
-        self.mappart6:render()
-        self.mappart7:render()
-        self.mappart8:render()
-        if self.mappart1.collider.body then
-            love.graphics.setColor(0.9,0.4,0.4)
-
-            love.graphics.rectangle("fill",300,150,50,175)
-            love.graphics.rectangle("fill",125.,325,175,50)
-            love.graphics.rectangle("fill",300,375,50,175)
-            love.graphics.rectangle("fill",350,325,175,50)
-            love.graphics.rectangle("fill",800,150,50,175)
-            love.graphics.rectangle("fill",625.,325,175,50)
-            love.graphics.rectangle("fill",800,375,50,175)
-            love.graphics.rectangle("fill",850,325,175,50)
-        end
-
-       love.graphics.setColor(1,1,1)
-
-      end
-
-
-      for key, value in pairs(self.player1Lasers) do
-          value:render()
-      end
-
-      for key, value in pairs(self.player2Lasers) do
-        value:render()
+        love.graphics.setColor(1, 1, 1)
     end
 
-      for key, value in pairs(self.Player1allBullet) do
-          value:render()
-      end
-
-      for key, value in pairs(self.Player2allBullet) do
-        value:render()
-    end
-
-      for k,v in pairs(self.player1Bomb) do
-        --self.growingradius = self.growingradius +10
-        love.graphics.draw(self.player1bombimage,v.collider:getX()-5, v.collider:getY()-5)
-        if self.display>3 then
-            for i = 1, 10, 1 do
-                love.graphics.circle("line",v.collider:getX(),v.collider:getY(),200)
+    -- Players
+    for i, p in ipairs(self.players) do
+        if p.collider.body then
+            p:render()
+            local img = self.playerimages[i]
+            if img then
+                love.graphics.draw(img,
+                    p.collider:getX(), p.collider:getY(),
+                    p.angle + 359.75, 1, 1,
+                    img:getWidth() / 2, img:getHeight() / 2)
             end
-            self.display = 0
         end
-
-        if v.growingradius>0 then
-            love.graphics.setColor(255,165,0,0.5)
-            love.graphics.circle("fill",v.collider:getX(),v.collider:getY(),v.growingradius)
-        end
-        love.graphics.setColor(1,1,1)
-
-
-      end
-
-    for k,v in pairs(self.player2Bomb) do
-        --self.growingradius = self.growingradius +10
-        love.graphics.draw(self.player1bombimage,v.collider:getX()-5, v.collider:getY()-5)
-        --love.graphics.circle("line",v.collider:getX(),v.collider:getY(),200)
-        if self.display>3 then
-            love.graphics.circle("line",v.collider:getX(),v.collider:getY(),200)
-            self.display = 0
-        end
-        if v.growingradius>0 then
-            love.graphics.setColor(255,165,0,0.5)
-            love.graphics.circle("fill",v.collider:getX(),v.collider:getY(),v.growingradius)
-        end
-        love.graphics.setColor(1,1,1)
-        --love.graphics.circle("fill",v.collider:getX(),v.collider:getY(),self.growingradius)
     end
 
-      for k,v in pairs(self.Powersuplier)do
-            v:render()
-      end
+    -- Lasers
+    for i = 1, #self.players do
+        for _, v in pairs(self.lasers[i]) do v:render() end
+    end
 
-      for k,v in pairs(self.player1ScatterShot)do
-        v:render()
-      end
+    -- Bullets
+    for i = 1, #self.players do
+        for _, v in pairs(self.allBullets[i]) do v:render() end
+    end
 
-      for k,v in pairs(self.player2ScatterShot)do
-        v:render()
-      end
-    --   love.graphics.print(count1)
-    --   love.graphics.print(count2,0,50)
+    -- Bombs
+    for i = 1, #self.players do
+        for _, v in pairs(self.bombs[i]) do
+            love.graphics.draw(self.player1bombimage, v.collider:getX()-5, v.collider:getY()-5)
+            if self.display > 3 then
+                love.graphics.circle("line", v.collider:getX(), v.collider:getY(), 200)
+                self.display = 0
+            end
+            if v.growingradius > 0 then
+                love.graphics.setColor(255, 165, 0, 0.5)
+                love.graphics.circle("fill", v.collider:getX(), v.collider:getY(), v.growingradius)
+            end
+            love.graphics.setColor(1, 1, 1)
+        end
+    end
 
-      -- HUD: power name stays until the player fires it (set in update, cleared in keypressed)
-      if self.whichpowerp1 ~= "" then
-          love.graphics.setColor(1, 0.9, 0.2)
-          love.graphics.print("P1 Power: " .. self.whichpowerp1 .. "  [press D]", 20, 20)
-          love.graphics.setColor(1, 1, 1)
-      end
-      if self.whichpowerp2 ~= "" then
-          love.graphics.setColor(0.3, 0.9, 1)
-          love.graphics.print("P2 Power: " .. self.whichpowerp2 .. "  [press ->]", WINDOW_WIDTH - 220, 20)
-          love.graphics.setColor(1, 1, 1)
-      end
-    --end
+    -- Scatter shots
+    for i = 1, #self.players do
+        for _, v in pairs(self.scattershots[i]) do v:render() end
+    end
 
-      -- for key, value in pairs(self.Player2allBullet) do
-      --     value:render()
-      -- end
+    -- Powerup suppliers
+    for _, v in pairs(self.Powersuplier) do v:render() end
 
-      -- if self.player1.destroy or self.player2.destroy then
-      --     love.graphics.print("Game Ended",100,100)
-      -- end
-    --   love.graphics.print('Memory actually used (in kB): ' .. collectgarbage('count'), 500,20)
-  end
+    -- HUD: power name per player (colour-coded, stays until fired)
+    local hudColors = {{1,0.9,0.2}, {0.3,0.9,1}, {0.3,1,0.3}, {1,0.5,0.3}}
+    local hudX      = {20, WINDOW_WIDTH-220, WINDOW_WIDTH/2-110, WINDOW_WIDTH/2+20}
+    for i, p in ipairs(self.players) do
+        if self.whichpower[i] ~= "" then
+            local c = hudColors[i] or {1, 1, 1}
+            love.graphics.setColor(c[1], c[2], c[3])
+            local keyHint = (p.controls and p.controls.usepower) or "?"
+            love.graphics.print("P"..i.." Power: "..self.whichpower[i].."  [press "..keyHint.."]",
+                hudX[i] or 20, 20)
+            love.graphics.setColor(1, 1, 1)
+        end
+    end
+end

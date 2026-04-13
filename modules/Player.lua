@@ -1,55 +1,53 @@
 require 'modules.powersuplier'
 Player = Class{}
 
-function Player:init(x, y, radius, class)
-    self.radius = radius
+--[[
+    Player:init(id, x, y, radius)
+      id      – numeric player ID (1, 2, 3, …); used to derive collision class names
+      x, y    – spawn position
+      radius  – circle collider radius
+    After creation, set:
+      player.isLocal  = true   if this machine controls this player
+      player.controls = { rotate='a', shoot='s', usepower='d' }
+--]]
+function Player:init(id, x, y, radius)
+    self.id       = id
+    self.radius   = radius
     self.collider = world:newCircleCollider(x, y, radius)
-    self.angle = 0
-    self.collider:setCollisionClass(class)
-    self.speed    = 350   -- current speed (reduced by collisions, recovers over time)
+    self.angle    = 0
+    self.collider:setCollisionClass('player'..id)
+    self.speed     = 350  -- current speed (reduced by collisions, recovers over time)
     self.basespeed = 350  -- maximum cruise speed
-    self.class = class
-    self.coverbullettimer = 2
-    self.totalbullets = 3
+    self.isLocal   = false   -- set true by PlayState for the player on this machine
+    self.controls  = {}      -- keybindings set by PlayState: { rotate, shoot, usepower }
+    self.coverbullettimer    = 2
+    self.totalbullets        = 3
     self.bulletrecoverytimer = 0
-    self.font = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf",12)
-    self.bulletimage =  love.graphics.newImage('assets/Bullet 5x5.png')
+    self.font        = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 12)
+    self.bulletimage = love.graphics.newImage('assets/Bullet 5x5.png')
     self.bulletangle = 0
     self.setrotation = 0
-
 end
 
 function Player:update(dt)
     if self.collider.body then
+        -- Powerup box: toggle rotation direction on contact
         if self.collider:enter('powersuplier') then
             local _ = self.collider:getEnterCollisionData('powersuplier')
-            if self.setrotation == 0 then
-                self.setrotation = 1
-            elseif self.setrotation == 1 then
-                self.setrotation = 0
-            end
-        end
-        if self.class == 'player1' then
-            if love.keyboard.isDown('a') then
-                if self.setrotation == 0 then
-                    self.angle = self.angle - 4 * dt
-                elseif self.setrotation == 1 then
-                    self.angle = self.angle + 4 * dt
-                end
-            end
-            self.bulletangle = self.bulletangle + 4*dt
+            self.setrotation = (self.setrotation == 0) and 1 or 0
         end
 
-        if self.class == 'player2' then
-            if love.keyboard.isDown('left') then
+        -- Rotation input: only for the local player, using their configured key
+        if self.isLocal and self.controls.rotate then
+            if love.keyboard.isDown(self.controls.rotate) then
                 if self.setrotation == 0 then
-                    self.angle = self.angle + 4 * dt
-                elseif self.setrotation == 1 then
                     self.angle = self.angle - 4 * dt
+                else
+                    self.angle = self.angle + 4 * dt
                 end
             end
-            self.bulletangle = self.bulletangle + 4*dt
         end
+        self.bulletangle = self.bulletangle + 4 * dt
 
         -- Move using per-player speed (modified by collisions)
         self.collider:setX(self.collider:getX() + math.cos(self.angle) * self.speed * dt)

@@ -1,5 +1,11 @@
-WINDOW_WIDTH = 1200
+WINDOW_WIDTH  = 1200
 WINDOW_HEIGHT = 700
+MAX_PLAYERS   = 4   -- engine supports up to this many; lobby sets the actual count
+
+-- Per-player scores (index = player ID).  Legacy globals kept for score states.
+PLAYER_SCORES  = {0, 0, 0, 0}
+PLAYER1_SCORE  = 0
+PLAYER2_SCORE  = 0
 
 push = require 'push'
 Class = require 'Class'
@@ -44,18 +50,19 @@ end
 
 world = wf.newWorld(0, 0, false)
 
-world:addCollisionClass('player1')
-world:addCollisionClass('player2')
-world:addCollisionClass('laser1P', {ignores = {'player1'}})
-world:addCollisionClass('laser2P', {ignores = {'player2'}})
-world:addCollisionClass('Bomb1P', {ignores = {'player1'}})
-world:addCollisionClass('Bomb2P', {ignores = {'player2'}})
-world:addCollisionClass('ScatterShot1P', {ignores = {'player1'}})
-world:addCollisionClass('ScatterShot2P', {ignores = {'player2'}})
+-- Register player collision classes and all weapon classes for MAX_PLAYERS players
+local mapsIgnores = {}
+for i = 1, MAX_PLAYERS do
+    world:addCollisionClass('player'..i)
+    world:addCollisionClass('laser'..i..'P',       {ignores = {'player'..i}})
+    world:addCollisionClass('Bomb'..i..'P',         {ignores = {'player'..i}})
+    world:addCollisionClass('ScatterShot'..i..'P',  {ignores = {'player'..i}})
+    world:addCollisionClass('bullets'..i..'P',      {ignores = {'player'..i}})
+    table.insert(mapsIgnores, 'laser'..i..'P')
+    table.insert(mapsIgnores, 'Bomb'..i..'P')
+end
 world:addCollisionClass('powersuplier')
-world:addCollisionClass('bullets1P', {ignores = {'player1'}})
-world:addCollisionClass('bullets2P', {ignores = {'player2'}})
-world:addCollisionClass("maps",{ignores = {'laser1P','laser2P','Bomb1P','Bomb2P'}})
+world:addCollisionClass('maps', {ignores = mapsIgnores})
 
 function love.resize(w, h)
     push:resize(w, h)
