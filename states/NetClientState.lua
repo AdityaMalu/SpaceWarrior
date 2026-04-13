@@ -4,9 +4,9 @@ NetClientState = Class{__includes = BaseState}
 
 local net = require "modules.net"
 
-local POWER_NAMES = { [1]="Laser", [2]="Bomb", [3]="Scatter", [4]="Reverse" }
+local POWER_NAMES = { [1]="Laser", [2]="Bomb", [3]="Scatter Shot", [4]="Reverse" }
 local HUD_COLORS  = { {1,0.9,0.2}, {0.3,0.9,1}, {0.3,1,0.3}, {1,0.5,0.3} }
-local HUD_X       = { 20, WINDOW_WIDTH - 230 }
+local HUD_X       = { 20, WINDOW_WIDTH - 220 }   -- matches PlayState hudX exactly
 
 function NetClientState:init()
     -- Game state received from host (updated by MSG_STATE packets)
@@ -19,7 +19,10 @@ function NetClientState:init()
     self.gameOver      = false
     self.winnerId      = 0
     self.endTimer      = 0
-    self.display       = 0   -- mirrors PlayState.display; drives bomb warning-circle flash
+    self.display       = 0   -- drives bomb warning-circle flash (local timer, same period as host)
+
+    -- Per-player bullet-orbit animation angle (advances at 4 rad/s, same as Player.bulletangle)
+    self.bulletAngles  = { 0, 0, 0, 0 }
 
     -- Pending one-shot input flags; cleared after each send
     self.pendingShoot    = false
@@ -39,6 +42,16 @@ function NetClientState:init()
     self.font         = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 22)
     self.font2        = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 48)
 
+    -- Sounds — same files and volumes as PlayState
+    self.sounds      = love.audio.newSource("assets/Sounds/Space Heroes.ogg", "static")
+    self.sounds:setVolume(0.18)
+    self.sounds:setLooping(true)
+    self.sounds:play()
+    self.blastsound  = love.audio.newSource("assets/Sounds/deathexplosion.mp3", "static")
+    self.blastsound:setVolume(0.5)
+    self.bulletsound = love.audio.newSource("assets/Sounds/bulletshootsound.mp3", "static")
+    self.bulletsound:setVolume(0.2)
+
     -- Map rects (must match PlayState's layout)
     self.mapRects = {
         {300,150,50,175}, {125,325,175,50},
@@ -57,6 +70,13 @@ function NetClientState:update(dt)
                 local msg = net.decode(event.data)
                 if msg then
                     if msg.type == net.MSG_STATE then
+                        -- Death detection: play explosion when a player transitions alive→dead
+                        for i, pd in ipairs(msg.players) do
+                            local prev = self.playerData[i]
+                            if prev and prev.alive and not pd.alive then
+                                self.blastsound:play()
+                            end
+                        end
                         self.playerData  = msg.players
                         self.bulletData  = msg.bullets
                         self.powerupData = msg.powerups
@@ -89,6 +109,11 @@ function NetClientState:update(dt)
 
     -- (Game-over is now handled immediately via MSG_GAMEOVER → newScore transition)
 
+    -- Advance per-player bullet-orbit angles at the same rate as Player.bulletangle (4 rad/s)
+    for i = 1, 4 do
+        self.bulletAngles[i] = self.bulletAngles[i] + 4 * dt
+    end
+
     -- Advance bomb warning-circle flash timer (mirrors PlayState.display)
     self.display = self.display + dt
     if self.display > 3 then self.display = 0 end
@@ -113,12 +138,16 @@ function NetClientState:keypressed(key)
     end
     local lid = NET.localId or 2
     if KEY_BINDINGS[lid] then
-        if key == KEY_BINDINGS[lid].shoot    then self.pendingShoot    = true end
+        if key == KEY_BINDINGS[lid].shoot then
+            self.bulletsound:play()   -- same as PlayState:keypressed() — plays on key, host decides if bullet fires
+            self.pendingShoot = true
+        end
         if key == KEY_BINDINGS[lid].usepower then self.pendingUsepower = true end
     end
 end
 
 function NetClientState:_cleanup()
+    self.sounds:stop()
     if NET.host then NET.host:destroy() end
     NET.host    = nil
     NET.peer    = nil
@@ -126,7 +155,10 @@ function NetClientState:_cleanup()
     NET.localId = 1
 end
 
-function NetClientState:exit() end
+function NetClientState:exit()
+    -- Stop background music so it doesn't bleed into the score screen
+    self.sounds:stop()
+end
 
 function NetClientState:render()
     -- Background
@@ -141,7 +173,7 @@ function NetClientState:render()
     end
     love.graphics.setColor(1, 1, 1)
 
-    -- Players — mirrors PlayState:render() player draw
+    -- Players — ship image, mirrors PlayState:render()
     for i, pd in ipairs(self.playerData) do
         if pd.alive then
             local img = self.playerimages[i]
@@ -154,6 +186,25 @@ function NetClientState:render()
                 love.graphics.setColor(c[1], c[2], c[3])
                 love.graphics.circle("fill", pd.x, pd.y, 30)
                 love.graphics.setColor(1, 1, 1)
+            end
+        end
+    end
+
+    -- Orbiting bullet-count dots — mirrors Player:render() exactly
+    -- (ba+360 / ba / ba-360 offsets match the original code; they differ by ~0.18 rad)
+    for i, pd in ipairs(self.playerData) do
+        if pd.alive then
+            local ba = self.bulletAngles[i]
+            local tb = pd.totalbullets or 0
+            if tb >= 3 then
+                love.graphics.draw(self.bulletimage, pd.x+40*math.cos(ba+360), pd.y+40*math.sin(ba+360))
+                love.graphics.draw(self.bulletimage, pd.x+40*math.cos(ba),     pd.y+40*math.sin(ba))
+                love.graphics.draw(self.bulletimage, pd.x+40*math.cos(ba-360), pd.y+40*math.sin(ba-360))
+            elseif tb == 2 then
+                love.graphics.draw(self.bulletimage, pd.x+40*math.cos(ba+360), pd.y+40*math.sin(ba+360))
+                love.graphics.draw(self.bulletimage, pd.x+40*math.cos(ba),     pd.y+40*math.sin(ba))
+            elseif tb == 1 then
+                love.graphics.draw(self.bulletimage, pd.x+40*math.cos(ba),     pd.y+40*math.sin(ba))
             end
         end
     end
