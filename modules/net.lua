@@ -19,17 +19,17 @@ net.TICK_RATE = 1 / 20   -- host broadcasts state 20 times per second
 
 -- ── Helpers ──────────────────────────────────────────────────────────────────
 -- Returns the LAN IP of this machine using the UDP-routing trick (no data sent).
+-- UDP sockets use setpeername() not connect() — connect() is TCP only.
 function net.getLocalIP()
-    local ok, socket = pcall(require, "socket")
-    if ok and socket then
+    local ok, ip = pcall(function()
+        local socket = require("socket")
         local s = socket.udp()
-        if s then
-            s:connect("8.8.8.8", 1)
-            local ip = s:getsockname()
-            s:close()
-            if ip and ip ~= "0.0.0.0" then return ip end
-        end
-    end
+        s:setpeername("8.8.8.8", 1)   -- UDP: setpeername, not connect
+        local addr = s:getsockname()
+        s:close()
+        return addr
+    end)
+    if ok and ip and ip ~= "0.0.0.0" then return ip end
     return "see System Preferences › Network"
 end
 
