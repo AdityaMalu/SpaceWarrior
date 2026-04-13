@@ -57,7 +57,12 @@ function NewScoreState:update(dt)
         self.player2CurrentPosition = self.player2CurrentPosition - self.animationSpeed * dt / 2
     end
     if self.player1CurrentPosition <= self.player1ProgressMeter.y and self.player2CurrentPosition <= self.player2ProgressMeter.y then
-        gStateMachine:change('play')
+        -- LAN client returns to netclient so the enet connection is reused for the next round
+        if NET.mode == 'client' then
+            gStateMachine:change('netclient')
+        else
+            gStateMachine:change('play')
+        end
     end
 
     if PLAYER1_SCORE == 6 then

@@ -336,7 +336,7 @@ function PlayState:update(dt)
             local winnerId = alivePlayers[1]   -- nil if draw
             -- Notify network client of game over (reliable, once)
             if NET.mode == 'host' and NET.peer and not self.hasGameEnded then
-                NET.peer:send(net.encodeGameOver(winnerId or 0), 1, "reliable")
+                NET.peer:send(net.encodeGameOver(winnerId or 0, PLAYER1_SCORE, PLAYER2_SCORE), 1, "reliable")
             end
             self.hasGameEnded = true
             if winnerId then

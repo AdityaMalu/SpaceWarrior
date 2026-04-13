@@ -38,8 +38,13 @@ function net.encodeStart()
     return love.data.pack("string", "B", net.MSG_START)
 end
 
-function net.encodeGameOver(winnerId)
-    return love.data.pack("string", "BB", net.MSG_GAMEOVER, winnerId or 0)
+-- winnerId: 1-based player index (0 = draw)
+-- p1score/p2score: current round-win counts so the client can show the same score screen
+function net.encodeGameOver(winnerId, p1score, p2score)
+    return love.data.pack("string", "BBBB",
+        net.MSG_GAMEOVER, winnerId or 0,
+        math.min(p1score or 0, 255),
+        math.min(p2score or 0, 255))
 end
 
 -- rotate / shoot / usepower: booleans
@@ -152,9 +157,9 @@ function net.decode(raw)
         return { type=net.MSG_START }
 
     elseif msgType == net.MSG_GAMEOVER then
-        if #raw < 2 then return nil end
-        local _, wi = love.data.unpack("BB", raw, 1)
-        return { type=net.MSG_GAMEOVER, winnerId=wi }
+        if #raw < 4 then return nil end
+        local _, wi, s1, s2 = love.data.unpack("BBBB", raw, 1)
+        return { type=net.MSG_GAMEOVER, winnerId=wi, p1score=s1, p2score=s2 }
     end
 
     return nil

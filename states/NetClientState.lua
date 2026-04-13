@@ -29,6 +29,7 @@ function NetClientState:init()
         love.graphics.newImage("assets/player2.png"),
     }
     self.powerupimage = love.graphics.newImage("assets/powersupplier.png")
+    self.bulletimage  = love.graphics.newImage("assets/Bullet 5x5.png")
     self.font         = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 22)
     self.font2        = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 48)
 
@@ -58,8 +59,14 @@ function NetClientState:update(dt)
                             self.winnerId = msg.winnerId
                         end
                     elseif msg.type == net.MSG_GAMEOVER then
-                        self.gameOver = true
-                        self.winnerId = msg.winnerId
+                        -- Sync score globals so NewScoreState renders correctly
+                        PLAYER1_SCORE = msg.p1score or PLAYER1_SCORE
+                        PLAYER2_SCORE = msg.p2score or PLAYER2_SCORE
+                        PLAYER_SCORES[1] = PLAYER1_SCORE
+                        PLAYER_SCORES[2] = PLAYER2_SCORE
+                        local winner = (msg.winnerId == 1) and "player1" or "player2"
+                        gStateMachine:change('newScore', winner)
+                        return
                     end
                 end
             elseif event.type == "disconnect" then
@@ -71,17 +78,7 @@ function NetClientState:update(dt)
         end
     end
 
-    -- 2) Game-over: show overlay for 4 s then start a fresh NetClientState for
-    --    the next round.  The enet connection is kept alive — do NOT clean up.
-    if self.gameOver then
-        self.endTimer = self.endTimer + dt
-        if self.endTimer > 4 then
-            -- Re-enter this state fresh; host will have returned to PlayState
-            -- and will begin broadcasting the new round's state automatically.
-            gStateMachine:change("netclient")
-        end
-        return
-    end
+    -- (Game-over is now handled immediately via MSG_GAMEOVER → newScore transition)
 
     -- 3) Send our input to the host every frame (~60 Hz)
     self.sendTimer = self.sendTimer + dt
@@ -148,12 +145,10 @@ function NetClientState:render()
         end
     end
 
-    -- Bullets (dots; no physics on client)
-    love.graphics.setColor(1, 1, 0.5)
+    -- Bullets — same image and scale as bullets:render() on the host
     for _, b in ipairs(self.bulletData) do
-        love.graphics.circle("fill", b.x, b.y, 3)
+        love.graphics.draw(self.bulletimage, b.x - 3, b.y - 3, 0, 1.7, 1.7)
     end
-    love.graphics.setColor(1, 1, 1)
 
     -- Powerup boxes
     for _, p in ipairs(self.powerupData) do
@@ -183,15 +178,4 @@ function NetClientState:render()
         love.graphics.printf("Waiting for next round…", 0, WINDOW_HEIGHT/2 - 20, WINDOW_WIDTH, "center")
     end
 
-    -- Game-over overlay
-    if self.gameOver then
-        love.graphics.setColor(0, 0, 0, 0.65)
-        love.graphics.rectangle("fill", 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
-        love.graphics.setColor(1, 1, 1)
-        love.graphics.setFont(self.font2)
-        local txt = self.winnerId > 0
-            and ("Player " .. self.winnerId .. " Wins!")
-            or  "Draw!"
-        love.graphics.printf(txt, 0, WINDOW_HEIGHT/2 - 50, WINDOW_WIDTH, "center")
-    end
 end
