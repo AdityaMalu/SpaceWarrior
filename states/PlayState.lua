@@ -5,6 +5,7 @@ require 'modules.powerups'
 require 'modules.bullets'
 require 'modules.powersuplier'
 require 'modules.maps'
+local net = require 'modules.net'
 math.randomseed(os.time())
 
 -- Equal-mass elastic collision between two Player objects (shared helper)
@@ -69,16 +70,24 @@ function PlayState:init()
         { x = WINDOW_WIDTH/2,  y = WINDOW_HEIGHT-40  },
     }
 
-    -- Create players; controls come from the live KEY_BINDINGS global
-    -- so any changes made in SettingsState take effect immediately next game
+    -- Create players; in host mode only the host's slot is local
     self.players = {}
     for i = 1, NUM_PLAYERS do
         local sp = spawnPos[i]
         local p  = Player(i, sp.x, sp.y, 30)
-        p.isLocal  = true                    -- both local for now; Phase 3 sets only one
+        if NET.mode == 'host' then
+            p.isLocal = (i == NET.localId)   -- only the host player reads keyboard
+        else
+            p.isLocal = true                 -- local play: all players are local
+        end
         p.controls = KEY_BINDINGS[i] or {}   -- reference to global — live bindings
         self.players[i] = p
     end
+
+    -- Network (host) state
+    self.netTimer           = 0
+    self.lastClientShoot    = false
+    self.lastClientUsepower = false
 
     -- Per-player weapon / power tables (indexed by player ID)
     self.lasers       = {}
@@ -211,6 +220,39 @@ function PlayState:update(dt)
         end
     end
 
+    -- ── Host networking: poll for client input and inject into remote player ──
+    if NET.mode == 'host' and NET.host then
+        local event = NET.host:service(0)
+        while event do
+            if event.type == 'receive' then
+                local msg = net.decode(event.data)
+                if msg and msg.type == net.MSG_INPUT then
+                    local p2 = self.players[2]
+                    if p2 then
+                        p2.networkInput = p2.networkInput or {}
+                        p2.networkInput.rotate = msg.rotate
+                        -- One-shot shoot / usepower (edge-triggered)
+                        if msg.shoot and not self.lastClientShoot then
+                            self.bulletsound:play()
+                            self:shootBullet(2)
+                        end
+                        if msg.usepower and not self.lastClientUsepower
+                                and self.pendingpower[2] > 0 then
+                            self:usePower(2)
+                        end
+                        self.lastClientShoot    = msg.shoot
+                        self.lastClientUsepower = msg.usepower
+                    end
+                end
+            elseif event.type == 'disconnect' then
+                -- Client left; return to title
+                gStateMachine:change('title')
+                return
+            end
+            event = NET.host:service(0)
+        end
+    end
+
     if #alivePlayers > 1 then
         self.timer   = self.timer   + dt
         self.display = self.display + dt
@@ -291,6 +333,11 @@ function PlayState:update(dt)
         if self.statechangetimer > 3 then
             self.blastsound:stop()
             local winnerId = alivePlayers[1]   -- nil if draw
+            -- Notify network client of game over (reliable, once)
+            if NET.mode == 'host' and NET.peer and not self.hasGameEnded then
+                NET.peer:send(net.encodeGameOver(winnerId or 0), 1, "reliable")
+            end
+            self.hasGameEnded = true
             if winnerId then
                 PLAYER_SCORES[winnerId] = (PLAYER_SCORES[winnerId] or 0) + 1
                 -- Keep legacy score globals in sync for the existing score states
@@ -303,6 +350,20 @@ function PlayState:update(dt)
             else
                 gStateMachine:change('newScore', 'player1')   -- draw fallback
             end
+        end
+    end
+
+    -- ── Host networking: broadcast game state to client ───────────────────────
+    if NET.mode == 'host' and NET.peer then
+        self.netTimer = self.netTimer + dt
+        if self.netTimer >= net.TICK_RATE then
+            self.netTimer = 0
+            local gameOver = #alivePlayers <= 1
+            local winnerId = gameOver and (alivePlayers[1] or 0) or 0
+            local stateData = net.encodeState(
+                self.players, self.allBullets, self.Powersuplier,
+                self.pendingpower, gameOver, winnerId)
+            NET.peer:send(stateData, 0, "unreliable")
         end
     end
 end
@@ -342,6 +403,15 @@ function PlayState:exit()
     -- Destroy map colliders
     for _, m in ipairs(self.maps) do
         if m.collider.body then m.collider:destroy() end
+    end
+
+    -- Clean up host-side enet resources after a LAN game
+    if NET.mode == 'host' and NET.host then
+        NET.host:destroy()
+        NET.host    = nil
+        NET.peer    = nil
+        NET.mode    = nil
+        NET.localId = 1
     end
 end
 

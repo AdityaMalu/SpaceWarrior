@@ -16,6 +16,15 @@ KEY_BINDINGS = {
     [4] = { rotate = 'z',    shoot = 'x',  usepower = 'c'     },
 }
 
+-- Network state (set by LobbyState before entering play/netclient)
+NET = {
+    mode    = nil,      -- 'host' | 'client' | nil  (nil = local play)
+    localId = 1,        -- which player slot is on this machine
+    host    = nil,      -- enet host object
+    peer    = nil,      -- enet peer to communicate with
+    port    = 22122,
+}
+
 push = require 'push'
 Class = require 'Class'
 require 'StateMachine'
@@ -27,6 +36,8 @@ require 'states.ScoreState'
 require 'states.harsh_scoreState'
 require 'states.RuleBook'
 require 'states.SettingsState'
+require 'states.LobbyState'
+require 'states.NetClientState'
 wf = require 'libraries.windfield.windfield'
 --Anima = require("libraries/anim8/anim8")
 
@@ -40,13 +51,15 @@ function love.load()
     })
 
     gStateMachine = StateMachine{
-        ['title'] = function () return TitleState() end,
-        ['play'] = function () return PlayState() end,
-        ['end'] = function () return EndState() end,
-        ['score'] = function () return ScoreState() end,
-        ['newScore'] = function () return NewScoreState() end,
-        ['intro']    = function () return RuleBook() end,
-        ['settings'] = function () return SettingsState() end
+        ['title']     = function () return TitleState() end,
+        ['play']      = function () return PlayState() end,
+        ['end']       = function () return EndState() end,
+        ['score']     = function () return ScoreState() end,
+        ['newScore']  = function () return NewScoreState() end,
+        ['intro']     = function () return RuleBook() end,
+        ['settings']  = function () return SettingsState() end,
+        ['lobby']     = function () return LobbyState() end,
+        ['netclient'] = function () return NetClientState() end,
     }
 
     gStateMachine:change('title')
@@ -83,6 +96,13 @@ function love.keypressed(key)
     gStateMachine.current:keypressed(key)
     if key == "escape" then
       love.event.quit()
+    end
+end
+
+-- Route textinput to the current state (used by LobbyState for IP entry)
+function love.textinput(t)
+    if gStateMachine.current.textinput then
+        gStateMachine.current:textinput(t)
     end
 end
 

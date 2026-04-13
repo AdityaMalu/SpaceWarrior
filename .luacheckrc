@@ -24,8 +24,13 @@ globals = {
     -- Dynamic key bindings (set in main.lua, mutated by SettingsState)
     "KEY_BINDINGS",
 
+    -- LAN networking state (set in main.lua, mutated by LobbyState/PlayState)
+    "NET",
+
     -- States
     "SettingsState",
+    "LobbyState",
+    "NetClientState",
 
     -- Physics world (set in PlayState:init, shared globally)
     "world",

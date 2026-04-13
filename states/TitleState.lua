@@ -23,6 +23,8 @@ end
 function TitleState:keypressed(key)
     if key == 'k' then
         gStateMachine:change("settings")
+    elseif key == 'l' then
+        gStateMachine:change("lobby")
     end
 end
 
@@ -44,5 +46,6 @@ function TitleState:render()
     love.graphics.printf("PRESS ENTER TO PLAY",    0, 480, WINDOW_WIDTH, "center")
     love.graphics.printf("PRESS I FOR RULES",      0, 530, WINDOW_WIDTH, "center")
     love.graphics.printf("PRESS K FOR KEY BINDINGS", 0, 580, WINDOW_WIDTH, "center")
+    love.graphics.printf("PRESS L FOR LAN GAME",     0, 630, WINDOW_WIDTH, "center")
 
 end
