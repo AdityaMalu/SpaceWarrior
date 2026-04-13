@@ -88,6 +88,7 @@ function PlayState:init()
     self.netTimer           = 0
     self.lastClientShoot    = false
     self.lastClientUsepower = false
+    self.hasGameEnded       = false   -- guards the one-shot MSG_GAMEOVER send
 
     -- Per-player weapon / power tables (indexed by player ID)
     self.lasers       = {}
@@ -405,14 +406,9 @@ function PlayState:exit()
         if m.collider.body then m.collider:destroy() end
     end
 
-    -- Clean up host-side enet resources after a LAN game
-    if NET.mode == 'host' and NET.host then
-        NET.host:destroy()
-        NET.host    = nil
-        NET.peer    = nil
-        NET.mode    = nil
-        NET.localId = 1
-    end
+    -- NOTE: enet is intentionally NOT destroyed here.
+    -- The connection must survive the newScore→play cycle so the next round
+    -- can start automatically.  TitleState:init() is the single cleanup point.
 end
 
 function PlayState:keypressed(key)

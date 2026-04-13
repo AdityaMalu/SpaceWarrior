@@ -71,12 +71,14 @@ function NetClientState:update(dt)
         end
     end
 
-    -- 2) Game-over: wait 3 s then return to title
+    -- 2) Game-over: show overlay for 4 s then start a fresh NetClientState for
+    --    the next round.  The enet connection is kept alive — do NOT clean up.
     if self.gameOver then
         self.endTimer = self.endTimer + dt
-        if self.endTimer > 3 then
-            self:_cleanup()
-            gStateMachine:change("title")
+        if self.endTimer > 4 then
+            -- Re-enter this state fresh; host will have returned to PlayState
+            -- and will begin broadcasting the new round's state automatically.
+            gStateMachine:change("netclient")
         end
         return
     end
@@ -170,6 +172,15 @@ function NetClientState:render()
                 HUD_X[i] or 20, 20)
             love.graphics.setColor(1, 1, 1)
         end
+    end
+
+    -- "Waiting" overlay when no state has arrived yet (host is in score screen)
+    if #self.playerData == 0 and not self.gameOver then
+        love.graphics.setColor(0, 0, 0, 0.5)
+        love.graphics.rectangle("fill", 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.setFont(self.font)
+        love.graphics.printf("Waiting for next round…", 0, WINDOW_HEIGHT/2 - 20, WINDOW_WIDTH, "center")
     end
 
     -- Game-over overlay

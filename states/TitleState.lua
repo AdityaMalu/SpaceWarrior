@@ -1,10 +1,21 @@
 TitleState = Class{__includes = BaseState}
 
 function TitleState:init()
+    -- Single cleanup point for any LAN connection left over from a finished game.
+    -- PlayState intentionally keeps enet alive across rounds; arriving here means
+    -- the player truly exited, so we tear it down now.
+    if NET.host then
+        NET.host:destroy()
+        NET.host    = nil
+        NET.peer    = nil
+        NET.mode    = nil
+        NET.localId = 1
+    end
+
     self.background = love.graphics.newImage("assets/BG.png")
-    self.font = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf",60)
-    self.font2 = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf",30)
-    self.sounds = love.audio.newSource("assets/Sounds/SkyFire (Title Screen).ogg","static")
+    self.font  = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 60)
+    self.font2 = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 30)
+    self.sounds = love.audio.newSource("assets/Sounds/SkyFire (Title Screen).ogg", "static")
     self.sounds:setVolume(0.5)
     self.sounds:setLooping(true)
     self.sounds:play()
