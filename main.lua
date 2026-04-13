@@ -7,6 +7,15 @@ PLAYER_SCORES  = {0, 0, 0, 0}
 PLAYER1_SCORE  = 0
 PLAYER2_SCORE  = 0
 
+-- Default key bindings for each player slot.
+-- SettingsState lets any player change these at runtime.
+KEY_BINDINGS = {
+    [1] = { rotate = 'a',    shoot = 's',  usepower = 'd'     },
+    [2] = { rotate = 'left', shoot = 'up', usepower = 'right' },
+    [3] = { rotate = 'i',    shoot = 'o',  usepower = 'p'     },
+    [4] = { rotate = 'z',    shoot = 'x',  usepower = 'c'     },
+}
+
 push = require 'push'
 Class = require 'Class'
 require 'StateMachine'
@@ -17,6 +26,7 @@ require 'states.EndState'
 require 'states.ScoreState'
 require 'states.harsh_scoreState'
 require 'states.RuleBook'
+require 'states.SettingsState'
 wf = require 'libraries.windfield.windfield'
 --Anima = require("libraries/anim8/anim8")
 
@@ -35,7 +45,8 @@ function love.load()
         ['end'] = function () return EndState() end,
         ['score'] = function () return ScoreState() end,
         ['newScore'] = function () return NewScoreState() end,
-        ['intro'] = function () return RuleBook() end
+        ['intro']    = function () return RuleBook() end,
+        ['settings'] = function () return SettingsState() end
     }
 
     gStateMachine:change('title')

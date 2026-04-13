@@ -21,6 +21,12 @@ globals = {
     -- N-player config (set in main.lua, read by weapons/players)
     "MAX_PLAYERS",
 
+    -- Dynamic key bindings (set in main.lua, mutated by SettingsState)
+    "KEY_BINDINGS",
+
+    -- States
+    "SettingsState",
+
     -- Physics world (set in PlayState:init, shared globally)
     "world",
 

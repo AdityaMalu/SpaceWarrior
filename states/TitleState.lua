@@ -11,12 +11,18 @@ function TitleState:init()
 end
 
 function TitleState:update()
-    if(love.keyboard.isDown("return")) then
+    if love.keyboard.isDown("return") then
         gStateMachine:change("play")
     end
-
-    if(love.keyboard.isDown("i")) then
+    if love.keyboard.isDown("i") then
         gStateMachine:change("intro")
+    end
+end
+
+-- keypressed handles single-press navigation (avoids repeating on hold)
+function TitleState:keypressed(key)
+    if key == 'k' then
+        gStateMachine:change("settings")
     end
 end
 
@@ -35,7 +41,8 @@ function TitleState:render()
     love.graphics.setFont(self.font)
     love.graphics.printf("Space Warrior",0,0,WINDOW_WIDTH,"center")
     love.graphics.setFont(self.font2)
-    love.graphics.printf("PRESS ENTER TO PLAY",0,500,WINDOW_WIDTH,"center")
-    love.graphics.printf("PRESS I TO SEE THE RULES",0,550,WINDOW_WIDTH,"center")
+    love.graphics.printf("PRESS ENTER TO PLAY",    0, 480, WINDOW_WIDTH, "center")
+    love.graphics.printf("PRESS I FOR RULES",      0, 530, WINDOW_WIDTH, "center")
+    love.graphics.printf("PRESS K FOR KEY BINDINGS", 0, 580, WINDOW_WIDTH, "center")
 
 end
