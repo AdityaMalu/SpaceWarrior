@@ -10,19 +10,23 @@ local HUD_X       = { 20, WINDOW_WIDTH - 230 }
 
 function NetClientState:init()
     -- Game state received from host (updated by MSG_STATE packets)
-    self.playerData  = {}
-    self.bulletData  = {}
-    self.powerupData = {}
-    self.gameOver    = false
-    self.winnerId    = 0
-    self.endTimer    = 0
+    self.playerData    = {}
+    self.bulletData    = {}
+    self.powerupData   = {}
+    self.laserData     = {}
+    self.bombData      = {}
+    self.scatterData   = {}
+    self.gameOver      = false
+    self.winnerId      = 0
+    self.endTimer      = 0
+    self.display       = 0   -- mirrors PlayState.display; drives bomb warning-circle flash
 
     -- Pending one-shot input flags; cleared after each send
     self.pendingShoot    = false
     self.pendingUsepower = false
     self.sendTimer       = 0
 
-    -- Assets (mirrors PlayState assets so rendering is consistent)
+    -- Assets — identical to what PlayState and weapon classes load
     self.background   = love.graphics.newImage("assets/Background/b3.png")
     self.playerimages = {
         love.graphics.newImage("assets/player1.png"),
@@ -30,6 +34,8 @@ function NetClientState:init()
     }
     self.powerupimage = love.graphics.newImage("assets/powersupplier.png")
     self.bulletimage  = love.graphics.newImage("assets/Bullet 5x5.png")
+    self.bombimage    = love.graphics.newImage("assets/Bomb_12x12.png")
+    self.laserimage   = love.graphics.newImage("assets/laser.jpg")
     self.font         = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 22)
     self.font2        = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 48)
 
@@ -54,6 +60,9 @@ function NetClientState:update(dt)
                         self.playerData  = msg.players
                         self.bulletData  = msg.bullets
                         self.powerupData = msg.powerups
+                        self.laserData   = msg.lasers
+                        self.bombData    = msg.bombs
+                        self.scatterData = msg.scattershots
                         if msg.gameOver and not self.gameOver then
                             self.gameOver = true
                             self.winnerId = msg.winnerId
@@ -79,6 +88,10 @@ function NetClientState:update(dt)
     end
 
     -- (Game-over is now handled immediately via MSG_GAMEOVER → newScore transition)
+
+    -- Advance bomb warning-circle flash timer (mirrors PlayState.display)
+    self.display = self.display + dt
+    if self.display > 3 then self.display = 0 end
 
     -- 3) Send our input to the host every frame (~60 Hz)
     self.sendTimer = self.sendTimer + dt
@@ -128,7 +141,7 @@ function NetClientState:render()
     end
     love.graphics.setColor(1, 1, 1)
 
-    -- Players (positions received from host)
+    -- Players — mirrors PlayState:render() player draw
     for i, pd in ipairs(self.playerData) do
         if pd.alive then
             local img = self.playerimages[i]
@@ -145,17 +158,41 @@ function NetClientState:render()
         end
     end
 
-    -- Bullets — same image and scale as bullets:render() on the host
+    -- Lasers — mirrors Laser:render()
+    for _, ld in ipairs(self.laserData) do
+        love.graphics.draw(self.laserimage, ld.x1, ld.y1,
+            math.atan2(ld.y2 - ld.y1, ld.x2 - ld.x1), 100, 0.1)
+    end
+
+    -- Bullets — mirrors bullets:render()
     for _, b in ipairs(self.bulletData) do
         love.graphics.draw(self.bulletimage, b.x - 3, b.y - 3, 0, 1.7, 1.7)
     end
 
-    -- Powerup boxes
+    -- Scatter shots — mirrors ScatterShot:render()
+    for _, s in ipairs(self.scatterData) do
+        love.graphics.draw(self.bulletimage, s.x, s.y)
+    end
+
+    -- Bombs — mirrors PlayState bomb block exactly
+    for _, bd in ipairs(self.bombData) do
+        love.graphics.draw(self.bombimage, bd.x - 5, bd.y - 5)
+        if self.display > 3 then
+            love.graphics.circle("line", bd.x, bd.y, 200)
+        end
+        if bd.r > 0 then
+            love.graphics.setColor(255, 165, 0, 0.5)
+            love.graphics.circle("fill", bd.x, bd.y, bd.r)
+        end
+        love.graphics.setColor(1, 1, 1)
+    end
+
+    -- Powerup boxes — mirrors powersuplier:render()
     for _, p in ipairs(self.powerupData) do
         love.graphics.draw(self.powerupimage, p.x - 17, p.y - 19, 0, 0.3, 0.3)
     end
 
-    -- HUD: power name per player
+    -- HUD: pending power name per player
     love.graphics.setFont(self.font)
     for i, pd in ipairs(self.playerData) do
         if pd.pendingpower and pd.pendingpower > 0 then
@@ -169,7 +206,7 @@ function NetClientState:render()
         end
     end
 
-    -- "Waiting" overlay when no state has arrived yet (host is in score screen)
+    -- "Waiting" overlay when host is in the score screen between rounds
     if #self.playerData == 0 and not self.gameOver then
         love.graphics.setColor(0, 0, 0, 0.5)
         love.graphics.rectangle("fill", 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -177,5 +214,4 @@ function NetClientState:render()
         love.graphics.setFont(self.font)
         love.graphics.printf("Waiting for next round…", 0, WINDOW_HEIGHT/2 - 20, WINDOW_WIDTH, "center")
     end
-
 end

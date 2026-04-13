@@ -363,7 +363,8 @@ function PlayState:update(dt)
             local winnerId = gameOver and (alivePlayers[1] or 0) or 0
             local stateData = net.encodeState(
                 self.players, self.allBullets, self.Powersuplier,
-                self.pendingpower, gameOver, winnerId)
+                self.pendingpower, gameOver, winnerId,
+                self.lasers, self.bombs, self.scattershots)
             NET.peer:send(stateData, 0, "unreliable")
         end
     end
