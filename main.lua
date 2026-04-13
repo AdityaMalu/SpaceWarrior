@@ -93,10 +93,21 @@ function love.resize(w, h)
 end
 
 function love.keypressed(key)
-    gStateMachine.current:keypressed(key)
-    if key == "escape" then
-      love.event.quit()
+    -- F11 toggles fullscreen at any time
+    if key == 'f11' then
+        love.window.setFullscreen(not love.window.getFullscreen())
+        return
     end
+
+    -- ESC while fullscreen: exit fullscreen first, don't navigate anywhere
+    if key == 'escape' and love.window.getFullscreen() then
+        love.window.setFullscreen(false)
+        return
+    end
+
+    -- Route to the current state (each state handles ESC as "go back to previous screen")
+    -- The title screen is the only place that allows quitting (press Q)
+    gStateMachine.current:keypressed(key)
 end
 
 -- Route textinput to the current state (used by LobbyState for IP entry)

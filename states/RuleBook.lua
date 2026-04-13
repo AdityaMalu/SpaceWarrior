@@ -6,11 +6,15 @@ function RuleBook:init()
 end
 
 function RuleBook:update()
-    if love.keyboard.isDown("return")  then
+    if love.keyboard.isDown("return") then
         gStateMachine:change("play")
     end
+end
 
-
+function RuleBook:keypressed(key)
+    if key == 'escape' then
+        gStateMachine:change('title')
+    end
 end
 
 function RuleBook:render()

@@ -26,7 +26,13 @@ function EndState:update(dt)
 
 end
 
-function  EndState:exit()
+function EndState:keypressed(key)
+    if key == 'escape' then
+        gStateMachine:change('title')
+    end
+end
+
+function EndState:exit()
     self.sounds:stop()
 end
 
@@ -53,5 +59,5 @@ function EndState:render()
     love.graphics.printf("GAME",0,100,WINDOW_WIDTH,"center")
     love.graphics.printf("END",0,150,WINDOW_WIDTH,"center")
     love.graphics.printf("PRESS ENTER TO PLAY AGAIN",0,450,WINDOW_WIDTH,"center")
-    love.graphics.printf("PRESS ESC TO EXIT",0,600,WINDOW_WIDTH,"center")
+    love.graphics.printf("PRESS ESC FOR MENU",0,600,WINDOW_WIDTH,"center")
 end

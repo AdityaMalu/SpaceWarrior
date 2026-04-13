@@ -417,7 +417,8 @@ end
 
 function PlayState:keypressed(key)
     if key == 'escape' then
-        love.event.quit()
+        gStateMachine:change('title')   -- ESC = back to menu (not quit)
+        return
     end
 
     -- Each local player's shoot and usepower keys are driven by their controls table

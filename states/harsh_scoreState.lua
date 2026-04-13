@@ -69,6 +69,12 @@ function NewScoreState:update(dt)
     end
 end
 
+function NewScoreState:keypressed(key)
+    if key == 'escape' then
+        gStateMachine:change('title')
+    end
+end
+
 function NewScoreState:exit()
     self.sounds:stop()
 end
