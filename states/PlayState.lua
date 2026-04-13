@@ -61,12 +61,6 @@ function PlayState:init()
         love.graphics.newImage("assets/player2.png"),
     }
 
-    -- Default keyboard controls per local player slot
-    local controlMap = {
-        [1] = { rotate = 'a',    shoot = 's',  usepower = 'd'     },
-        [2] = { rotate = 'left', shoot = 'up', usepower = 'right' },
-    }
-
     -- Spawn positions (scales to 4 players; Phase 3 may override)
     local spawnPos = {
         { x = 40,              y = WINDOW_HEIGHT / 2 },
@@ -75,13 +69,14 @@ function PlayState:init()
         { x = WINDOW_WIDTH/2,  y = WINDOW_HEIGHT-40  },
     }
 
-    -- Create players
+    -- Create players; controls come from the live KEY_BINDINGS global
+    -- so any changes made in SettingsState take effect immediately next game
     self.players = {}
     for i = 1, NUM_PLAYERS do
         local sp = spawnPos[i]
         local p  = Player(i, sp.x, sp.y, 30)
-        p.isLocal  = true                   -- both local for now; Phase 3 sets only one
-        p.controls = controlMap[i] or {}
+        p.isLocal  = true                    -- both local for now; Phase 3 sets only one
+        p.controls = KEY_BINDINGS[i] or {}   -- reference to global — live bindings
         self.players[i] = p
     end
 
