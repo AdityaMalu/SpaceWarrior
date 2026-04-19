@@ -93,3 +93,12 @@ ignore = {
 -- ── Style settings ────────────────────────────────────────────────────────────
 -- Line-length is not enforced: LÖVE draw calls are naturally verbose.
 max_line_length = false
+
+-- ── Per-path overrides ───────────────────────────────────────────────────────
+-- spec/ runs under busted (plain Lua 5.4, no LÖVE).  Pull in the `busted`
+-- standard-globals list (describe/it/assert/before_each/…) and allow spec
+-- helpers to define the `love` global as a test stub.
+files["spec"] = {
+    std = "+busted",
+    globals = { "love" },
+}
