@@ -129,16 +129,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Lua and LuaRocks
+      - name: Install Lua 5.4 and LuaRocks
+        # Ubuntu's `luarocks` package pulls in lua5.1 as a dependency, which
+        # then wins the /usr/bin/lua alternative. Our helper uses string.pack
+        # (Lua 5.3+), so we pin the interpreter back to 5.4.
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y lua5.4 liblua5.4-dev luarocks
+          sudo update-alternatives --set lua-interpreter /usr/bin/lua5.4
 
-      - name: Install busted
-        run: sudo luarocks install busted
+      - name: Install busted (against Lua 5.4)
+        run: sudo luarocks --lua-version=5.4 --lua-dir=/usr install busted
 
       - name: Run busted specs
         run: |
-          echo "▶ Running busted specs from spec/…"
+          echo "▶ Running busted specs from spec/ ($(lua -v 2>&1))…"
           busted --verbose spec/
           echo "✅ Unit tests passed"
