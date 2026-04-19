@@ -27,6 +27,9 @@ function LobbyState:init()
     self.ipInput     = ""
     self.localIP     = ""
     self.publicIP    = ""          -- fetched asynchronously when hosting
+    self.connectTimer = 0
+    self.handshakeComplete = false
+    self.pendingTitleMessage = nil
     self.pubIPChan   = love.thread.getChannel("sw_pubip")
     self.pubIPThread = nil
     self.errMsg      = ""
@@ -36,7 +39,7 @@ function LobbyState:init()
     while self.pubIPChan:pop() do end
 end
 
-function LobbyState:update(_dt)
+function LobbyState:update(dt)
     -- Poll public-IP result channel (filled by background thread)
     local fetchedIP = self.pubIPChan:pop()
     if fetchedIP then
@@ -50,36 +53,90 @@ function LobbyState:update(_dt)
         while event do
             if event.type == "connect" then
                 NET.peer   = event.peer
-                self.phase = HOST_READY
                 self.errMsg = ""
+            elseif event.type == "receive" then
+                local msg = net.decode(event.data)
+                if msg and msg.type == net.MSG_HELLO then
+                    if msg.version == net.NET_PROTOCOL_VERSION then
+                        NET.peer = event.peer
+                        NET.peer:send(net.encodeHelloOk(), 1, "reliable")
+                        self.phase = HOST_READY
+                        self.errMsg = ""
+                    else
+                        self.pendingTitleMessage = net.formatVersionMismatch(
+                            net.getGameVersion(),
+                            net.NET_PROTOCOL_VERSION,
+                            msg.version)
+                        event.peer:send(
+                            net.encodeVersionMismatch(net.NET_PROTOCOL_VERSION, msg.version),
+                            1,
+                            "reliable")
+                        event.peer:disconnect_later()
+                        if NET.host then NET.host:flush() end
+                        self.phase = HOST_WAIT
+                        self.errMsg = self.pendingTitleMessage
+                        NET.peer = nil
+                    end
+                end
             elseif event.type == "disconnect" then
                 NET.peer    = nil
+                if self.pendingTitleMessage then
+                    local message = self.pendingTitleMessage
+                    self.pendingTitleMessage = nil
+                    self:_cancel()
+                    gStateMachine:change("title", message)
+                    return
+                end
                 self.phase  = HOST_WAIT
-                self.errMsg = "Client disconnected — waiting again…"
+                self.errMsg = net.STRINGS.peerDisconnected
             end
             event = NET.host:service(0)
         end
 
     elseif self.phase == CONNECTING then
+        if not self.handshakeComplete then
+            self.connectTimer = self.connectTimer + dt
+            if self.connectTimer >= 5 then
+                self:_resetToMenu(net.STRINGS.connectTimeout)
+                return
+            end
+        end
+
         local event = NET.host:service(10)
         while event do
             if event.type == "connect" then
                 NET.peer    = event.peer
-                self.errMsg = "Connected! Waiting for host to start…"
+                NET.peer:send(net.encodeHello(net.NET_PROTOCOL_VERSION), 1, "reliable")
+                self.errMsg = "Connected. Waiting for handshake…"
             elseif event.type == "receive" then
                 local msg = net.decode(event.data)
-                if msg and msg.type == net.MSG_START then
-                    NET.mode    = "client"
-                    NET.localId = 2
-                    gStateMachine:change("netclient")
-                    return
+                if msg then
+                    if msg.type == net.MSG_HELLO_OK then
+                        self.handshakeComplete = true
+                        self.errMsg = "Connected! Waiting for host to start…"
+                    elseif msg.type == net.MSG_VERSION_MISMATCH then
+                        self:_resetConnectionState()
+                        gStateMachine:change(
+                            "title",
+                            net.formatVersionMismatch(
+                                net.getGameVersion(),
+                                msg.actualVersion,
+                                msg.expectedVersion))
+                        return
+                    elseif msg.type == net.MSG_START then
+                        NET.mode    = "client"
+                        NET.localId = 2
+                        gStateMachine:change("netclient")
+                        return
+                    end
                 end
             elseif event.type == "disconnect" then
-                self.errMsg = "Connection refused or timed out"
-                self.phase  = JOIN_INPUT
-                if NET.host then NET.host:destroy() end
-                NET.host = nil
-                NET.peer = nil
+                if self.handshakeComplete then
+                    self:_resetToMenu(net.STRINGS.peerDisconnected)
+                else
+                    self:_resetToMenu(net.STRINGS.connectTimeout)
+                end
+                return
             end
             event = NET.host:service(10)
         end
@@ -89,11 +146,17 @@ end
 function LobbyState:keypressed(key)
     if self.phase == MENU then
         if key == "h" then
-            NET.host    = net.enet.host_create("*:" .. net.PORT, 1, 2)
+            NET.host = net.enet.host_create("*:" .. net.PORT, 1, 2)
+            if not NET.host then
+                self.errMsg = string.format(net.STRINGS.portInUse, net.PORT)
+                self.phase = MENU
+                return
+            end
             NET.mode    = "host"
             NET.localId = 1
             self.localIP  = net.getLocalIP()
             self.publicIP = "fetching…"
+            self.pendingTitleMessage = nil
             -- Launch background thread to fetch public (WAN) IP
             self.pubIPThread = love.thread.newThread(PUBIP_THREAD)
             self.pubIPThread:start()
@@ -120,8 +183,14 @@ function LobbyState:keypressed(key)
     elseif self.phase == JOIN_INPUT then
         if key == "return" and #self.ipInput > 0 then
             NET.host      = net.enet.host_create(nil, 1, 2)
+            if not NET.host then
+                self:_resetToMenu(net.STRINGS.connectTimeout)
+                return
+            end
             NET.host:connect(self.ipInput .. ":" .. net.PORT, 2)
             self.phase    = CONNECTING
+            self.connectTimer = 0
+            self.handshakeComplete = false
             self.errMsg   = "Connecting to " .. self.ipInput .. "…"
         elseif key == "backspace" then
             self.ipInput = self.ipInput:sub(1, -2)
@@ -132,10 +201,7 @@ function LobbyState:keypressed(key)
 
     elseif self.phase == CONNECTING then
         if key == "escape" then
-            if NET.host then NET.host:destroy() end
-            NET.host   = nil
-            NET.peer   = nil
-            NET.mode   = nil
+            self:_resetConnectionState()
             self.phase  = JOIN_INPUT
             self.errMsg = ""
         end
@@ -150,15 +216,31 @@ function LobbyState:textinput(t)
 end
 
 function LobbyState:_cancel()
+    self:_resetConnectionState()
+    self.phase    = MENU
+    self.errMsg   = ""
+    self.publicIP = ""
+    self.pendingTitleMessage = nil
+    -- Let the background thread finish naturally (it will push to the channel
+    -- which we drain on the next init(), so no cleanup needed here)
+end
+
+function LobbyState:_resetConnectionState()
+    if NET.peer then NET.peer:disconnect_now() end
     if NET.host then NET.host:destroy() end
     NET.host      = nil
     NET.peer      = nil
     NET.mode      = nil
-    self.phase    = MENU
-    self.errMsg   = ""
+    self.connectTimer = 0
+    self.handshakeComplete = false
+    self.pendingTitleMessage = nil
+end
+
+function LobbyState:_resetToMenu(message)
+    self:_resetConnectionState()
+    self.phase = MENU
+    self.errMsg = message or ""
     self.publicIP = ""
-    -- Let the background thread finish naturally (it will push to the channel
-    -- which we drain on the next init(), so no cleanup needed here)
 end
 
 function LobbyState:exit() end   -- host/peer kept alive for PlayState / NetClientState

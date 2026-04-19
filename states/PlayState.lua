@@ -218,7 +218,10 @@ function PlayState:update(dt)
                 end
             elseif event.type == 'disconnect' then
                 -- Client left; return to title
-                gStateMachine:change('title')
+                if event.peer == NET.peer then
+                    gStateMachine:change('title', net.STRINGS.peerDisconnected)
+                    return
+                end
                 return
             end
             event = NET.host:service(0)
