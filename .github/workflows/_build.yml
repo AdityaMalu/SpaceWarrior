@@ -1,0 +1,139 @@
+# =============================================================================
+# _build.yml
+# Reusable build pipeline shared by build-release.yml (beta) and release.yml
+# (tagged). Packages SpaceWarrior.love and builds Windows / macOS / Linux
+# binaries on a single Ubuntu runner.
+#
+# Inputs:
+#   game_version  — version string injected as ${GAME_VERSION} (e.g.
+#                   "beta-123" or "v1.0.0"). Consumed by scripts/set-version.sh
+#                   when that script is present; ignored otherwise.
+#   asset_infix   — infix applied to the .love filename and platform archive
+#                   names (e.g. "" keeps "SpaceWarrior.love"; "-v1.0.0"
+#                   yields "SpaceWarrior-v1.0.0.love" etc.).
+# =============================================================================
+
+name: _build
+
+on:
+  workflow_call:
+    inputs:
+      game_version:
+        required: true
+        type: string
+      asset_infix:
+        required: false
+        type: string
+        default: ""
+
+env:
+  LOVE_VERSION: "11.5"
+  GAME_NAME: "SpaceWarrior"
+
+jobs:
+  package-love:
+    name: "Package .love"
+    runs-on: ubuntu-latest
+
+    env:
+      GAME_VERSION: ${{ inputs.game_version }}
+      ASSET_INFIX: ${{ inputs.asset_infix }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Inject version (if scripts/set-version.sh is present)
+        run: |
+          if [ -x scripts/set-version.sh ]; then
+            echo "▶ Running scripts/set-version.sh with GAME_VERSION=$GAME_VERSION"
+            scripts/set-version.sh "$GAME_VERSION"
+          else
+            echo "ℹ scripts/set-version.sh not present — skipping version injection"
+          fi
+
+      - name: Create .love file
+        run: |
+          LOVE_NAME="${GAME_NAME}${ASSET_INFIX}.love"
+          zip -9 -r "$LOVE_NAME" . \
+            --exclude "*.git*"        \
+            --exclude "*/.vscode/*"   \
+            --exclude "errors.txt"    \
+            --exclude ".github/*"     \
+            --exclude "scripts/*"     \
+            --exclude "spec/*"        \
+            --exclude "CHANGELOG.md"
+          echo "LOVE_NAME=$LOVE_NAME" >> "$GITHUB_ENV"
+
+      - name: Verify main.lua in package
+        run: |
+          python3 - <<'EOF'
+          import os, zipfile
+          love = os.environ["LOVE_NAME"]
+          with zipfile.ZipFile(love) as z:
+              assert "main.lua" in z.namelist(), f"main.lua missing from {love}"
+          print(f"✅ Package OK: {love}")
+          EOF
+
+      - name: Upload .love artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: love-package
+          path: ${{ env.LOVE_NAME }}
+
+  build-binaries:
+    name: "Build Platform Binaries"
+    needs: package-love
+    runs-on: ubuntu-latest
+
+    env:
+      GAME_VERSION: ${{ inputs.game_version }}
+      ASSET_INFIX: ${{ inputs.asset_infix }}
+
+    steps:
+      - name: Download .love package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: love-package
+
+      - name: Download LÖVE ${{ env.LOVE_VERSION }} releases
+        env:
+          BASE_URL: https://github.com/love2d/love/releases/download/${{ env.LOVE_VERSION }}
+        run: |
+          wget -q "$BASE_URL/love-${{ env.LOVE_VERSION }}-win64.zip"
+          wget -q "$BASE_URL/love-${{ env.LOVE_VERSION }}-macos.zip"
+          wget -q "$BASE_URL/love-${{ env.LOVE_VERSION }}-x86_64.AppImage"
+
+      - name: Build Windows binary
+        run: |
+          LOVE_NAME="${GAME_NAME}${ASSET_INFIX}.love"
+          unzip -q "love-${{ env.LOVE_VERSION }}-win64.zip"
+          DIR="love-${{ env.LOVE_VERSION }}-win64"
+          cat "$DIR/love.exe" "$LOVE_NAME" > "$DIR/${GAME_NAME}.exe"
+          rm "$DIR/love.exe"
+          zip -9 "${GAME_NAME}${ASSET_INFIX}-windows-x64.zip" "$DIR"/*
+
+      - name: Build macOS binary
+        run: |
+          LOVE_NAME="${GAME_NAME}${ASSET_INFIX}.love"
+          unzip -q "love-${{ env.LOVE_VERSION }}-macos.zip" -d love-macos
+          cp "$LOVE_NAME" "love-macos/love.app/Contents/Resources/${GAME_NAME}.love"
+          mv love-macos/love.app "love-macos/${GAME_NAME}.app"
+          zip -9 -r "${GAME_NAME}${ASSET_INFIX}-macos.zip" "love-macos/${GAME_NAME}.app"
+
+      - name: Build Linux binary
+        run: |
+          LOVE_NAME="${GAME_NAME}${ASSET_INFIX}.love"
+          chmod +x "love-${{ env.LOVE_VERSION }}-x86_64.AppImage"
+          cat "love-${{ env.LOVE_VERSION }}-x86_64.AppImage" "$LOVE_NAME" \
+            > "${GAME_NAME}${ASSET_INFIX}-linux-x86_64.AppImage"
+          chmod +x "${GAME_NAME}${ASSET_INFIX}-linux-x86_64.AppImage"
+
+      - name: Upload platform artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: platform-builds
+          path: |
+            ${{ env.GAME_NAME }}${{ inputs.asset_infix }}-windows-x64.zip
+            ${{ env.GAME_NAME }}${{ inputs.asset_infix }}-macos.zip
+            ${{ env.GAME_NAME }}${{ inputs.asset_infix }}-linux-x86_64.AppImage

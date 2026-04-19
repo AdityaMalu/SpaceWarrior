@@ -15,9 +15,6 @@ on:
     branches:
       - main
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   # ---------------------------------------------------------------------------
   # 1. Static Analysis — luacheck
@@ -28,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install luacheck
         run: sudo apt-get update -qq && sudo apt-get install -y luacheck
@@ -49,7 +46,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Install Lua compiler
         run: sudo apt-get update -qq && sudo apt-get install -y lua5.4
@@ -83,7 +80,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Package game into .love file
         run: |
@@ -111,7 +108,7 @@ jobs:
           EOF
 
       - name: Upload .love as workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: SpaceWarrior-pr-${{ github.event.pull_request.number }}.love
           path: SpaceWarrior.love
