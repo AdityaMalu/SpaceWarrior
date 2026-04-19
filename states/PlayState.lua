@@ -445,16 +445,18 @@ function PlayState:render()
     -- Bombs
     for i = 1, #self.players do
         for _, v in pairs(self.bombs[i]) do
-            love.graphics.draw(self.player1bombimage, v.collider:getX()-5, v.collider:getY()-5)
-            if self.display > 3 then
-                love.graphics.circle("line", v.collider:getX(), v.collider:getY(), 200)
-                self.display = 0
+            if v.collider.body then
+                love.graphics.draw(self.player1bombimage, v.collider:getX()-5, v.collider:getY()-5)
+                if self.display > 3 then
+                    love.graphics.circle("line", v.collider:getX(), v.collider:getY(), 200)
+                    self.display = 0
+                end
+                if v.growingradius > 0 then
+                    love.graphics.setColor(255, 165, 0, 0.5)
+                    love.graphics.circle("fill", v.collider:getX(), v.collider:getY(), v.growingradius)
+                end
+                love.graphics.setColor(1, 1, 1)
             end
-            if v.growingradius > 0 then
-                love.graphics.setColor(255, 165, 0, 0.5)
-                love.graphics.circle("fill", v.collider:getX(), v.collider:getY(), v.growingradius)
-            end
-            love.graphics.setColor(1, 1, 1)
         end
     end
 

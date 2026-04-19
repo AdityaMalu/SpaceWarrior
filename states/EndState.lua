@@ -15,15 +15,10 @@ end
 function EndState:update(dt)
     --self.Animation:update(dt)
     if(love.keyboard.isDown("return")) then
+        PLAYER1_SCORE = 0
+        PLAYER2_SCORE = 0
         gStateMachine:change("play")
     end
-
-    if love.keyboard.isDown("return")then
-        PLAYER1_SCORE = 0
-         PLAYER2_SCORE = 0
-    end
-
-
 end
 
 function EndState:keypressed(key)
