@@ -31,8 +31,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install luacheck
-        run: sudo apt-get update -qq && sudo apt-get install -y luacheck
+      - name: Install Lua 5.4, LuaRocks, and luacheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y lua5.4 liblua5.4-dev luarocks
+          sudo update-alternatives --set lua-interpreter /usr/bin/lua5.4
+          sudo luarocks --lua-version=5.4 --lua-dir=/usr install luacheck
 
       - name: Run luacheck
         # .luacheckrc at repo root is picked up automatically
