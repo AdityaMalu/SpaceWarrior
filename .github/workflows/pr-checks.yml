@@ -3,9 +3,10 @@
 # Runs on every Pull Request targeting the `main` branch.
 #
 # Jobs:
-#   1. lint    — static analysis with luacheck
-#   2. syntax  — Lua syntax validation with luac
-#   3. package — verifies the game can be packaged into a .love file
+#   1. lint       — static analysis with luacheck
+#   2. syntax     — Lua syntax validation with luac
+#   3. package    — verifies the game can be packaged into a .love file
+#   4. unit-tests — busted specs for pure, non-LÖVE modules (net, physics)
 # =============================================================================
 
 name: PR Checks
@@ -116,3 +117,32 @@ jobs:
           name: SpaceWarrior-pr-${{ github.event.pull_request.number }}.love
           path: SpaceWarrior.love
           retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # 4. Unit Tests — busted specs for pure modules
+  # ---------------------------------------------------------------------------
+  unit-tests:
+    name: "Unit Tests — busted"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Lua 5.4 and LuaRocks
+        # Ubuntu's `luarocks` package pulls in lua5.1 as a dependency, which
+        # then wins the /usr/bin/lua alternative. Our helper uses string.pack
+        # (Lua 5.3+), so we pin the interpreter back to 5.4.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y lua5.4 liblua5.4-dev luarocks
+          sudo update-alternatives --set lua-interpreter /usr/bin/lua5.4
+
+      - name: Install busted (against Lua 5.4)
+        run: sudo luarocks --lua-version=5.4 --lua-dir=/usr install busted
+
+      - name: Run busted specs
+        run: |
+          echo "▶ Running busted specs from spec/ ($(lua -v 2>&1))…"
+          busted --verbose spec/
+          echo "✅ Unit tests passed"
