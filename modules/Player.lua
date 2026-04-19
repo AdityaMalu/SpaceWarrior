@@ -18,8 +18,9 @@ function Player:init(id, x, y, radius)
     self.collider:setCollisionClass('player'..id)
     self.speed     = 350  -- current speed (reduced by collisions, recovers over time)
     self.basespeed = 350  -- maximum cruise speed
-    self.isLocal   = false   -- set true by PlayState for the player on this machine
-    self.controls  = {}      -- keybindings set by PlayState: { rotate, shoot, usepower }
+    self.isLocal      = false   -- set true by PlayState for the player on this machine
+    self.controls     = {}      -- keybindings set by PlayState: { rotate, shoot, usepower }
+    self.networkInput = { rotate=false }  -- driven by host when isLocal=false (LAN mode)
     self.coverbullettimer    = 2
     self.totalbullets        = 3
     self.bulletrecoverytimer = 0
@@ -37,14 +38,18 @@ function Player:update(dt)
             self.setrotation = (self.setrotation == 0) and 1 or 0
         end
 
-        -- Rotation input: only for the local player, using their configured key
+        -- Rotation input: local player uses keyboard; remote player uses networkInput
+        local doRotate = false
         if self.isLocal and self.controls.rotate then
-            if love.keyboard.isDown(self.controls.rotate) then
-                if self.setrotation == 0 then
-                    self.angle = self.angle - 4 * dt
-                else
-                    self.angle = self.angle + 4 * dt
-                end
+            doRotate = love.keyboard.isDown(self.controls.rotate)
+        elseif not self.isLocal and self.networkInput then
+            doRotate = self.networkInput.rotate == true
+        end
+        if doRotate then
+            if self.setrotation == 0 then
+                self.angle = self.angle - 4 * dt
+            else
+                self.angle = self.angle + 4 * dt
             end
         end
         self.bulletangle = self.bulletangle + 4 * dt

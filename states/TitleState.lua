@@ -1,10 +1,21 @@
 TitleState = Class{__includes = BaseState}
 
 function TitleState:init()
+    -- Single cleanup point for any LAN connection left over from a finished game.
+    -- PlayState intentionally keeps enet alive across rounds; arriving here means
+    -- the player truly exited, so we tear it down now.
+    if NET.host then
+        NET.host:destroy()
+        NET.host    = nil
+        NET.peer    = nil
+        NET.mode    = nil
+        NET.localId = 1
+    end
+
     self.background = love.graphics.newImage("assets/BG.png")
-    self.font = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf",60)
-    self.font2 = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf",30)
-    self.sounds = love.audio.newSource("assets/Sounds/SkyFire (Title Screen).ogg","static")
+    self.font  = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 60)
+    self.font2 = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 30)
+    self.sounds = love.audio.newSource("assets/Sounds/SkyFire (Title Screen).ogg", "static")
     self.sounds:setVolume(0.5)
     self.sounds:setLooping(true)
     self.sounds:play()
@@ -23,7 +34,13 @@ end
 function TitleState:keypressed(key)
     if key == 'k' then
         gStateMachine:change("settings")
+    elseif key == 'l' then
+        gStateMachine:change("lobby")
+    elseif key == 'q' then
+        love.event.quit()
     end
+    -- ESC on the title screen does nothing: there is no "previous" screen.
+    -- Fullscreen ESC is already handled globally in main.lua.
 end
 
 function TitleState:exit()
@@ -41,8 +58,13 @@ function TitleState:render()
     love.graphics.setFont(self.font)
     love.graphics.printf("Space Warrior",0,0,WINDOW_WIDTH,"center")
     love.graphics.setFont(self.font2)
-    love.graphics.printf("PRESS ENTER TO PLAY",    0, 480, WINDOW_WIDTH, "center")
-    love.graphics.printf("PRESS I FOR RULES",      0, 530, WINDOW_WIDTH, "center")
-    love.graphics.printf("PRESS K FOR KEY BINDINGS", 0, 580, WINDOW_WIDTH, "center")
+    love.graphics.printf("PRESS ENTER TO PLAY",       0, 460, WINDOW_WIDTH, "center")
+    love.graphics.printf("PRESS I FOR RULES",          0, 505, WINDOW_WIDTH, "center")
+    love.graphics.printf("PRESS K FOR KEY BINDINGS",   0, 550, WINDOW_WIDTH, "center")
+    love.graphics.printf("PRESS L FOR LAN GAME",       0, 595, WINDOW_WIDTH, "center")
+    love.graphics.printf("F11 TOGGLE FULLSCREEN",      0, 640, WINDOW_WIDTH, "center")
+    love.graphics.setColor(1, 0.4, 0.4)
+    love.graphics.printf("PRESS Q TO QUIT",            0, 685, WINDOW_WIDTH, "center")
+    love.graphics.setColor(1, 1, 1)
 
 end
