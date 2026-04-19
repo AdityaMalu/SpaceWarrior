@@ -30,9 +30,12 @@ function SettingsState:keypressed(key)
             -- Cancel: keep old binding
             self.waitingForKey = false
         else
-            -- Assign new key to selected slot
+            -- Assign new key to selected slot and persist immediately.
             KEY_BINDINGS[self.selectedPlayer][ACTION_KEYS[self.selectedAction]] = key
             self.waitingForKey = false
+            if settings and settings.save then
+                settings.save()
+            end
         end
         return
     end

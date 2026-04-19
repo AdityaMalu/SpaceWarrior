@@ -24,6 +24,15 @@ globals = {
     -- Dynamic key bindings (set in main.lua, mutated by SettingsState)
     "KEY_BINDINGS",
 
+    -- Audio volumes (master/music/sfx) — persisted via modules/settings.lua
+    "AUDIO_VOLUMES",
+
+    -- Fullscreen preference — persisted via modules/settings.lua
+    "FULLSCREEN_PREF",
+
+    -- Settings module instance (require'd in main.lua, used in SettingsState)
+    "settings",
+
     -- LAN networking state (set in main.lua, mutated by LobbyState/PlayState)
     "NET",
 
