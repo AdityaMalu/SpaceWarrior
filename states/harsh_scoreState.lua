@@ -1,4 +1,7 @@
 NewScoreState = Class{__includes = BaseState}
+
+local audio = require 'modules.audio'
+
 function NewScoreState:enter(winner)
     print(winner)
     self.player1ProgressMeter = {}
@@ -37,7 +40,7 @@ function NewScoreState:init()
     self.player1image = love.graphics.newImage("assets/player1.png")
     self.player2image = love.graphics.newImage("assets/player2.png")
     self.tablegraphics = love.graphics.newImage("assets/line.png")
-    self.sounds = love.audio.newSource("assets/Sounds/scorestate.wav","static")
+    self.sounds = audio.newSource("assets/Sounds/scorestate.wav", "static", "music")
     self.sounds:setVolume(0.5)
     self.sounds:setLooping(true)
     self.sounds:play()

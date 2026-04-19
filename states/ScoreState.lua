@@ -64,6 +64,12 @@ function ScoreState:update(dt)
 
 end
 
+function ScoreState:keypressed(key)
+  if key == 'escape' then
+    gStateMachine:change('title')
+  end
+end
+
 
 
 function ScoreState:render()

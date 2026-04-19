@@ -1,12 +1,14 @@
 EndState = Class{__includes = BaseState}
 
+local audio = require 'modules.audio'
+
 require 'states.PlayState'
 
 function EndState:init()
     self.background = love.graphics.newImage("assets/BG.png")
     self.font = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf",30)
     --self.Animation:startNewTypingAnimation("GAME END",5)
-    self.sounds = love.audio.newSource("assets/Sounds/Victory Tune.ogg","static")
+    self.sounds = audio.newSource("assets/Sounds/Victory Tune.ogg", "static", "music")
     self.sounds:setVolume(0.5)
     self.sounds:setLooping(true)
     self.sounds:play()
