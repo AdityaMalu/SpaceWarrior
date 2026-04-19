@@ -392,6 +392,9 @@ function PlayState:keypressed(key)
     end
 
     if key == 'p' then
+        if NET.mode then
+            return
+        end
         local pauseState = PauseState()
         pauseState:enter(self)
         gStateMachine.current = pauseState
