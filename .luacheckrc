@@ -31,6 +31,10 @@ globals = {
     "SettingsState",
     "LobbyState",
     "NetClientState",
+    "CreditsState",
+
+    -- Build version string (populated from version.lua, injected by CI on tags)
+    "GAME_VERSION",
 
     -- Physics world (set in PlayState:init, shared globally)
     "world",

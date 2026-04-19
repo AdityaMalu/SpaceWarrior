@@ -32,13 +32,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Inject the build version into version.lua so `GAME_VERSION` inside
+      # the fused binary reflects the tag (or commit ref for beta builds).
+      - name: Inject build version
+        env:
+          GAME_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || format('beta-{0}', github.run_number) }}
+        run: |
+          chmod +x scripts/set-version.sh
+          scripts/set-version.sh
+          cat version.lua
+
       - name: Create .love file
         run: |
           zip -9 -r ${{ env.GAME_NAME }}.love . \
             --exclude "*.git*"        \
             --exclude "*/.vscode/*"   \
             --exclude "errors.txt"    \
-            --exclude ".github/*"
+            --exclude ".github/*"     \
+            --exclude "scripts/*"
 
       - name: Verify main.lua in package
         run: |
@@ -77,11 +88,31 @@ jobs:
           wget -q "$BASE_URL/love-${{ env.LOVE_VERSION }}-macos.zip"
           wget -q "$BASE_URL/love-${{ env.LOVE_VERSION }}-x86_64.AppImage"
 
+      # Pull the platform icon assets out of the .love package so they are
+      # available as loose files for rcedit / the macOS bundle rewrite.
+      - name: Extract icon assets from .love
+        run: |
+          unzip -o -j ${{ env.GAME_NAME }}.love \
+            "assets/icon.ico" "assets/icon.icns" -d icons/
+
+      # rcedit is a Windows binary; run it under wine on the Ubuntu runner.
+      - name: Install wine + rcedit
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends wine64
+          wget -q -O rcedit-x64.exe \
+            https://github.com/electron/rcedit/releases/download/v2.0.0/rcedit-x64.exe
+
       # ── Windows ─────────────────────────────────────────────────────────────
       - name: Build Windows binary
         run: |
           unzip -q love-${{ env.LOVE_VERSION }}-win64.zip
           DIR="love-${{ env.LOVE_VERSION }}-win64"
+          # Set the custom icon on love.exe BEFORE fusing: PE resources live
+          # in headers, and the appended .love zip does not affect them.
+          WINEDEBUG=-all wine rcedit-x64.exe "$DIR/love.exe" \
+            --set-icon icons/icon.ico
           # Fuse: append .love to love.exe to create a self-contained executable
           cat "$DIR/love.exe" ${{ env.GAME_NAME }}.love > "$DIR/${{ env.GAME_NAME }}.exe"
           rm "$DIR/love.exe"
@@ -91,9 +122,16 @@ jobs:
       - name: Build macOS binary
         run: |
           unzip -q love-${{ env.LOVE_VERSION }}-macos.zip -d love-macos
+          APP="love-macos/love.app"
+          # Install custom icon and retarget Info.plist's CFBundleIconFile.
+          cp icons/icon.icns "$APP/Contents/Resources/${{ env.GAME_NAME }}.icns"
+          rm -f "$APP/Contents/Resources/love.icns"
+          sed -i \
+            's|<string>love.icns</string>|<string>${{ env.GAME_NAME }}.icns</string>|' \
+            "$APP/Contents/Info.plist"
           # Copy .love into the app bundle's Resources
-          cp ${{ env.GAME_NAME }}.love love-macos/love.app/Contents/Resources/
-          mv love-macos/love.app love-macos/${{ env.GAME_NAME }}.app
+          cp ${{ env.GAME_NAME }}.love "$APP/Contents/Resources/"
+          mv "$APP" "love-macos/${{ env.GAME_NAME }}.app"
           zip -9 -r ${{ env.GAME_NAME }}-macos.zip love-macos/${{ env.GAME_NAME }}.app
 
       # ── Linux ────────────────────────────────────────────────────────────────

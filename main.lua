@@ -2,6 +2,11 @@ WINDOW_WIDTH  = 1200
 WINDOW_HEIGHT = 700
 MAX_PLAYERS   = 4   -- engine supports up to this many; lobby sets the actual count
 
+-- Single source of truth for the build version.
+-- `version.lua` is overwritten by scripts/set-version.sh on tagged CI builds;
+-- the checked-in fallback value is "dev" for local/untagged runs.
+GAME_VERSION = require 'version'
+
 -- Per-player scores (index = player ID).  Legacy globals kept for score states.
 PLAYER_SCORES  = {0, 0, 0, 0}
 PLAYER1_SCORE  = 0
@@ -38,6 +43,7 @@ require 'states.RuleBook'
 require 'states.SettingsState'
 require 'states.LobbyState'
 require 'states.NetClientState'
+require 'states.CreditsState'
 wf = require 'libraries.windfield.windfield'
 --Anima = require("libraries/anim8/anim8")
 
@@ -60,6 +66,7 @@ function love.load()
         ['settings']  = function () return SettingsState() end,
         ['lobby']     = function () return LobbyState() end,
         ['netclient'] = function () return NetClientState() end,
+        ['credits']   = function () return CreditsState() end,
     }
 
     gStateMachine:change('title')
@@ -68,7 +75,7 @@ function love.load()
     PLAYER1_SCORE = 0
     PLAYER2_SCORE = 0
 
-    love.window.setTitle("Space Warrior")
+    love.window.setTitle("Space Warrior " .. GAME_VERSION)
 
 end
 
