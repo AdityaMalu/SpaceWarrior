@@ -16,6 +16,12 @@ KEY_BINDINGS = {
     [4] = { rotate = 'z',    shoot = 'x',  usepower = 'c'     },
 }
 
+-- Audio volume defaults (0.0 .. 1.0). Wired to sources by the UX-polish task.
+AUDIO_VOLUMES = { master = 1.0, music = 0.5, sfx = 0.5 }
+
+-- Fullscreen preference; applied at startup and updated when the user toggles.
+FULLSCREEN_PREF = true
+
 -- Network state (set by LobbyState before entering play/netclient)
 NET = {
     mode    = nil,      -- 'host' | 'client' | nil  (nil = local play)
@@ -39,12 +45,17 @@ require 'states.SettingsState'
 require 'states.LobbyState'
 require 'states.NetClientState'
 wf = require 'libraries.windfield.windfield'
+settings = require 'modules.settings'
 --Anima = require("libraries/anim8/anim8")
 
 function love.load()
     --Animation = Anima:init()
+    -- Load persisted settings BEFORE the state machine is built so states
+    -- (e.g. SettingsState, PlayState) see the user's bindings from turn one.
+    settings.load()
+
     push:setupScreen(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_WIDTH, WINDOW_HEIGHT, {
-        fullscreen = true,
+        fullscreen = FULLSCREEN_PREF,
         vsync = true,
         resizable = true,
         stretched = true
@@ -95,13 +106,18 @@ end
 function love.keypressed(key)
     -- F11 toggles fullscreen at any time
     if key == 'f11' then
-        love.window.setFullscreen(not love.window.getFullscreen())
+        local newState = not love.window.getFullscreen()
+        love.window.setFullscreen(newState)
+        FULLSCREEN_PREF = newState
+        settings.save()
         return
     end
 
     -- ESC while fullscreen: exit fullscreen first, don't navigate anywhere
     if key == 'escape' and love.window.getFullscreen() then
         love.window.setFullscreen(false)
+        FULLSCREEN_PREF = false
+        settings.save()
         return
     end
 
