@@ -1,0 +1,147 @@
+# =============================================================================
+# _build.yml (reusable)
+# Shared build pipeline for the beta cadence (build-release.yml) and the
+# tagged release pipeline (release.yml). Produces a .love package plus
+# Windows/macOS/Linux binaries.
+#
+# Inputs:
+#   game_version  — version label injected into the build as GAME_VERSION
+#                   (e.g. "beta-123" or "v1.0.0").
+#   asset_infix   — string inserted into asset filenames after the game
+#                   name. Use "" for beta (preserves existing names) or
+#                   "-v1.0.0" for tagged releases.
+# =============================================================================
+
+name: Build (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      game_version:
+        description: "Version label passed to the build as GAME_VERSION."
+        required: true
+        type: string
+      asset_infix:
+        description: "Infix inserted into asset filenames (e.g. '' or '-v1.0.0')."
+        required: false
+        type: string
+        default: ""
+
+env:
+  LOVE_VERSION: "11.5"
+  GAME_NAME: "SpaceWarrior"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Package .love
+  # ---------------------------------------------------------------------------
+  package-love:
+    name: "Package .love"
+    runs-on: ubuntu-latest
+    env:
+      GAME_VERSION: ${{ inputs.game_version }}
+      ASSET_INFIX: ${{ inputs.asset_infix }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      # NOTE: GAME_VERSION is exposed here so that any bundled version-injection
+      # script introduced by the Identity task (e.g. writing GAME_VERSION into
+      # conf.lua / a version constant) can consume it at packaging time. The
+      # script itself is not yet merged; this plumbing is intentionally
+      # inert until then.
+      - name: Create .love file
+        run: |
+          LOVE_FILE="${GAME_NAME}${ASSET_INFIX}.love"
+          zip -9 -r "$LOVE_FILE" . \
+            --exclude "*.git*"        \
+            --exclude "*/.vscode/*"   \
+            --exclude "errors.txt"    \
+            --exclude ".github/*"
+          echo "LOVE_FILE=$LOVE_FILE" >> "$GITHUB_ENV"
+
+      - name: Verify main.lua in package
+        run: |
+          python3 - <<'EOF'
+          import os, zipfile
+          path = os.environ["LOVE_FILE"]
+          with zipfile.ZipFile(path) as z:
+              assert "main.lua" in z.namelist(), \
+                  f"main.lua missing from {path}"
+          print(f"✅ Package OK: {path}")
+          EOF
+
+      - name: Upload .love artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: love-package
+          path: ${{ env.LOVE_FILE }}
+
+  # ---------------------------------------------------------------------------
+  # 2. Build platform binaries (all three platforms on a single Ubuntu runner)
+  # ---------------------------------------------------------------------------
+  build-binaries:
+    name: "Build Platform Binaries"
+    needs: package-love
+    runs-on: ubuntu-latest
+    env:
+      GAME_VERSION: ${{ inputs.game_version }}
+      ASSET_INFIX: ${{ inputs.asset_infix }}
+
+    steps:
+      - name: Download .love package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: love-package
+
+      - name: Resolve output filenames
+        run: |
+          echo "LOVE_FILE=${GAME_NAME}${ASSET_INFIX}.love"                  >> "$GITHUB_ENV"
+          echo "WIN_ZIP=${GAME_NAME}${ASSET_INFIX}-windows-x64.zip"         >> "$GITHUB_ENV"
+          echo "MAC_ZIP=${GAME_NAME}${ASSET_INFIX}-macos.zip"               >> "$GITHUB_ENV"
+          echo "LIN_APPIMAGE=${GAME_NAME}${ASSET_INFIX}-linux-x86_64.AppImage" >> "$GITHUB_ENV"
+
+      - name: Download LÖVE ${{ env.LOVE_VERSION }} releases
+        env:
+          BASE_URL: https://github.com/love2d/love/releases/download/${{ env.LOVE_VERSION }}
+        run: |
+          wget -q "$BASE_URL/love-${LOVE_VERSION}-win64.zip"
+          wget -q "$BASE_URL/love-${LOVE_VERSION}-macos.zip"
+          wget -q "$BASE_URL/love-${LOVE_VERSION}-x86_64.AppImage"
+
+      # ── Windows ─────────────────────────────────────────────────────────────
+      - name: Build Windows binary
+        run: |
+          unzip -q "love-${LOVE_VERSION}-win64.zip"
+          DIR="love-${LOVE_VERSION}-win64"
+          # Fuse: append .love to love.exe to create a self-contained executable
+          cat "$DIR/love.exe" "$LOVE_FILE" > "$DIR/${GAME_NAME}.exe"
+          rm "$DIR/love.exe"
+          zip -9 "$WIN_ZIP" "$DIR"/*
+
+      # ── macOS ───────────────────────────────────────────────────────────────
+      - name: Build macOS binary
+        run: |
+          unzip -q "love-${LOVE_VERSION}-macos.zip" -d love-macos
+          # Copy .love into the app bundle's Resources
+          cp "$LOVE_FILE" love-macos/love.app/Contents/Resources/
+          mv love-macos/love.app "love-macos/${GAME_NAME}.app"
+          zip -9 -r "$MAC_ZIP" "love-macos/${GAME_NAME}.app"
+
+      # ── Linux ────────────────────────────────────────────────────────────────
+      - name: Build Linux binary
+        run: |
+          chmod +x "love-${LOVE_VERSION}-x86_64.AppImage"
+          # Fuse: append .love to the AppImage
+          cat "love-${LOVE_VERSION}-x86_64.AppImage" "$LOVE_FILE" > "$LIN_APPIMAGE"
+          chmod +x "$LIN_APPIMAGE"
+
+      - name: Upload platform artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: platform-builds
+          path: |
+            ${{ env.WIN_ZIP }}
+            ${{ env.MAC_ZIP }}
+            ${{ env.LIN_APPIMAGE }}

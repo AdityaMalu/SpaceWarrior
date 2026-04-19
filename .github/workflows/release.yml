@@ -1,0 +1,71 @@
+# =============================================================================
+# release.yml
+# Triggered on pushes of semver-style tags (`v*.*.*`). Produces a full
+# (non-pre-release) GitHub Release whose name is the tag and whose four
+# artefacts carry the tag in their filename (e.g. SpaceWarrior-v1.0.0.love).
+#
+# Build logic is shared with the beta pipeline via _build.yml.
+# See .github/release-checklist.md for the tagging procedure.
+# =============================================================================
+
+name: Release (Tagged)
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+env:
+  LOVE_VERSION: "11.5"
+  GAME_NAME: "SpaceWarrior"
+
+jobs:
+  build:
+    uses: ./.github/workflows/_build.yml
+    with:
+      game_version: ${{ github.ref_name }}
+      asset_infix: -${{ github.ref_name }}
+
+  release:
+    name: "Publish Versioned Release"
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download love-package artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: love-package
+          path: dist/
+
+      - name: Download platform-builds artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: platform-builds
+          path: dist/
+
+      - name: Create Versioned Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "SpaceWarrior ${{ github.ref_name }}"
+          prerelease: false
+          body: |
+            **SpaceWarrior ${{ github.ref_name }}** — released from commit `${{ github.sha }}`.
+
+            See [CHANGELOG.md](./CHANGELOG.md) for release notes.
+
+            ## Downloads
+            | Platform | File | Notes |
+            |----------|------|-------|
+            | 🪟 Windows | `SpaceWarrior-${{ github.ref_name }}-windows-x64.zip` | Extract and run `SpaceWarrior.exe` |
+            | 🍎 macOS   | `SpaceWarrior-${{ github.ref_name }}-macos.zip`       | Extract and open `SpaceWarrior.app` |
+            | 🐧 Linux   | `SpaceWarrior-${{ github.ref_name }}-linux-x86_64.AppImage` | `chmod +x` then run |
+            | 🎮 LÖVE    | `SpaceWarrior-${{ github.ref_name }}.love`            | Requires [LÖVE ${{ env.LOVE_VERSION }}](https://love2d.org) |
+          files: |
+            dist/SpaceWarrior-${{ github.ref_name }}.love
+            dist/SpaceWarrior-${{ github.ref_name }}-windows-x64.zip
+            dist/SpaceWarrior-${{ github.ref_name }}-macos.zip
+            dist/SpaceWarrior-${{ github.ref_name }}-linux-x86_64.AppImage
