@@ -13,15 +13,6 @@ end
 
 function powersuplier:update(dt)
     self.timer = self.timer + dt
-        -- for k,v in pairs(self.dabba) do
-        --     if v:enter('player1')then
-        --         v:destroy()
-        --     end
-        --     if v:enter('player2')then
-        --         v:destroy()
-        --     end
-        -- end
-
 end
 
 function powersuplier:enter()

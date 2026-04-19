@@ -6,50 +6,21 @@ require 'modules.bullets'
 require 'modules.powersuplier'
 require 'modules.maps'
 local net = require 'modules.net'
+local physics = require 'modules.physics'
 math.randomseed(os.time())
 
--- Equal-mass elastic collision between two Player objects (shared helper)
+-- Thin wrapper around physics.resolveElasticCollision: adapts the Player/collider
+-- API to the pure-Lua function that lives in modules/physics.lua.
 local function resolveElasticCollision(pa, pb)
-    local pax = pa.collider:getX()
-    local pay = pa.collider:getY()
-    local pbx = pb.collider:getX()
-    local pby = pb.collider:getY()
-    local dx   = pbx - pax
-    local dy   = pby - pay
-    local dist = math.sqrt(dx * dx + dy * dy)
-    local minDist = pa.radius + pb.radius
-    if dist >= minDist or dist <= 0 then return end
-
-    local nx = dx / dist
-    local ny = dy / dist
-    local vax = math.cos(pa.angle) * pa.speed
-    local vay = math.sin(pa.angle) * pa.speed
-    local vbx = math.cos(pb.angle) * pb.speed
-    local vby = math.sin(pb.angle) * pb.speed
-    local van = vax * nx + vay * ny
-    local vbn = vbx * nx + vby * ny
-
-    if van - vbn > 0 then   -- only resolve if approaching
-        local r = 0.75
-        local new_van = vbn * r
-        local new_vbn = van * r
-        local new_vax = vax + (new_van - van) * nx
-        local new_vay = vay + (new_van - van) * ny
-        local new_vbx = vbx + (new_vbn - vbn) * nx
-        local new_vby = vby + (new_vbn - vbn) * ny
-        local spda = math.sqrt(new_vax * new_vax + new_vay * new_vay)
-        local spdb = math.sqrt(new_vbx * new_vbx + new_vby * new_vby)
-        local MIN_SPEED, MAX_SPEED = 180, 350
-        pa.speed = math.max(MIN_SPEED, math.min(MAX_SPEED, spda))
-        pb.speed = math.max(MIN_SPEED, math.min(MAX_SPEED, spdb))
-        if spda > 0.1 then pa.angle = math.atan2(new_vay, new_vax) end
-        if spdb > 0.1 then pb.angle = math.atan2(new_vby, new_vbx) end
-    end
-    local overlap = (minDist - dist) / 2 + 1
-    pa.collider:setX(pax - nx * overlap)
-    pa.collider:setY(pay - ny * overlap)
-    pb.collider:setX(pbx + nx * overlap)
-    pb.collider:setY(pby + ny * overlap)
+    local a = { x = pa.collider:getX(), y = pa.collider:getY(),
+                angle = pa.angle, speed = pa.speed, radius = pa.radius }
+    local b = { x = pb.collider:getX(), y = pb.collider:getY(),
+                angle = pb.angle, speed = pb.speed, radius = pb.radius }
+    physics.resolveElasticCollision(a, b)
+    pa.angle, pa.speed = a.angle, a.speed
+    pb.angle, pb.speed = b.angle, b.speed
+    pa.collider:setX(a.x); pa.collider:setY(a.y)
+    pb.collider:setX(b.x); pb.collider:setY(b.y)
 end
 
 function PlayState:init()
@@ -474,16 +445,18 @@ function PlayState:render()
     -- Bombs
     for i = 1, #self.players do
         for _, v in pairs(self.bombs[i]) do
-            love.graphics.draw(self.player1bombimage, v.collider:getX()-5, v.collider:getY()-5)
-            if self.display > 3 then
-                love.graphics.circle("line", v.collider:getX(), v.collider:getY(), 200)
-                self.display = 0
+            if v.collider.body then
+                love.graphics.draw(self.player1bombimage, v.collider:getX()-5, v.collider:getY()-5)
+                if self.display > 3 then
+                    love.graphics.circle("line", v.collider:getX(), v.collider:getY(), 200)
+                    self.display = 0
+                end
+                if v.growingradius > 0 then
+                    love.graphics.setColor(255, 165, 0, 0.5)
+                    love.graphics.circle("fill", v.collider:getX(), v.collider:getY(), v.growingradius)
+                end
+                love.graphics.setColor(1, 1, 1)
             end
-            if v.growingradius > 0 then
-                love.graphics.setColor(255, 165, 0, 0.5)
-                love.graphics.circle("fill", v.collider:getX(), v.collider:getY(), v.growingradius)
-            end
-            love.graphics.setColor(1, 1, 1)
         end
     end
 

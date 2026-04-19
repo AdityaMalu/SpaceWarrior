@@ -1,0 +1,11 @@
+# Runtime crash logs written by love.errorhandler
+error-*.log
+
+# Build artefacts
+*.love
+dist/
+love-*/
+
+# Editor / OS cruft
+.DS_Store
+*.swp
