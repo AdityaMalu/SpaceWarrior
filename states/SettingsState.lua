@@ -1,8 +1,12 @@
 SettingsState = Class{__includes = BaseState}
 
+local audio = require 'modules.audio'
+
 -- Action order and their KEY_BINDINGS field names
 local ACTION_LABELS = {"Rotate", "Shoot", "Use Power"}
 local ACTION_KEYS   = {"rotate", "shoot", "usepower"}
+local VOLUME_LABELS = {"Master", "Music", "SFX"}
+local VOLUME_KEYS   = {"master", "music", "sfx"}
 
 -- Per-player display colours (matching the in-game HUD)
 local PLAYER_COLORS = {
@@ -18,10 +22,28 @@ function SettingsState:init()
     self.fontKey    = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 18)
     self.fontFooter = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 14)
     self.background = love.graphics.newImage("assets/BG.png")
+    self.previewMusic = audio.newSource("assets/Sounds/SkyFire (Title Screen).ogg", "static", "music")
+    self.previewMusic:setVolume(0.5)
+    self.previewMusic:setLooping(true)
+    self.previewMusic:play()
 
     self.selectedPlayer = 1     -- 1 .. MAX_PLAYERS
     self.selectedAction = 1     -- 1 = rotate, 2 = shoot, 3 = usepower
+    self.selectedSection = 'bindings'
+    self.selectedAudio = 1
     self.waitingForKey  = false  -- true while listening for a new key press
+end
+
+local function clampVolume(value)
+    if value < 0 then return 0 end
+    if value > 1 then return 1 end
+    return value
+end
+
+function SettingsState:adjustVolume(delta)
+    local key = VOLUME_KEYS[self.selectedAudio]
+    AUDIO_VOLUMES[key] = clampVolume((AUDIO_VOLUMES[key] or 0) + delta)
+    audio.apply()
 end
 
 function SettingsState:keypressed(key)
@@ -40,25 +62,66 @@ function SettingsState:keypressed(key)
         return
     end
 
+    if key == 'escape' then
+        gStateMachine:change('title')
+        return
+    end
+
     -- Navigation
     if key == 'left' then
-        self.selectedPlayer = ((self.selectedPlayer - 2) % MAX_PLAYERS) + 1
+        if self.selectedSection == 'bindings' then
+            self.selectedPlayer = ((self.selectedPlayer - 2) % MAX_PLAYERS) + 1
+        else
+            self:adjustVolume(-0.05)
+        end
     elseif key == 'right' then
-        self.selectedPlayer = (self.selectedPlayer % MAX_PLAYERS) + 1
+        if self.selectedSection == 'bindings' then
+            self.selectedPlayer = (self.selectedPlayer % MAX_PLAYERS) + 1
+        else
+            self:adjustVolume(0.05)
+        end
     elseif key == 'up' then
-        self.selectedAction = ((self.selectedAction - 2) % #ACTION_LABELS) + 1
+        if self.selectedSection == 'bindings' then
+            if self.selectedAction == 1 then
+                self.selectedSection = 'audio'
+                self.selectedAudio = #VOLUME_LABELS
+            else
+                self.selectedAction = self.selectedAction - 1
+            end
+        elseif self.selectedAudio == 1 then
+            self.selectedSection = 'bindings'
+            self.selectedAction = #ACTION_LABELS
+        else
+            self.selectedAudio = self.selectedAudio - 1
+        end
     elseif key == 'down' then
-        self.selectedAction = (self.selectedAction % #ACTION_LABELS) + 1
+        if self.selectedSection == 'bindings' then
+            if self.selectedAction == #ACTION_LABELS then
+                self.selectedSection = 'audio'
+                self.selectedAudio = 1
+            else
+                self.selectedAction = self.selectedAction + 1
+            end
+        elseif self.selectedAudio == #VOLUME_LABELS then
+            self.selectedSection = 'bindings'
+            self.selectedAction = 1
+        else
+            self.selectedAudio = self.selectedAudio + 1
+        end
     elseif key == 'return' or key == ' ' then
-        self.waitingForKey = true
-    elseif key == 'escape' then
-        gStateMachine:change('title')
+        if self.selectedSection == 'bindings' then
+            self.waitingForKey = true
+        elseif settings and settings.save then
+            settings.save()
+        end
     end
 end
 
 function SettingsState:update() end
 function SettingsState:enter() end
-function SettingsState:exit()  end
+function SettingsState:exit()
+    self.previewMusic:stop()
+end
 
 function SettingsState:render()
     -- Background with dark overlay for readability
@@ -71,13 +134,16 @@ function SettingsState:render()
 
     -- Title
     love.graphics.setFont(self.fontTitle)
-    love.graphics.printf("KEY BINDINGS", 0, 28, WINDOW_WIDTH, "center")
+    love.graphics.printf("SETTINGS", 0, 20, WINDOW_WIDTH, "center")
 
     -- Grid layout
     local colW   = WINDOW_WIDTH / MAX_PLAYERS   -- width of each player column
-    local rowH   = 110                           -- height of each action row
-    local gridY  = 120                           -- top of player-header row
-    local cellY0 = gridY + 52                    -- top of first action row
+    local rowH   = 88                            -- height of each action row
+    local gridY  = 96                            -- top of player-header row
+    local cellY0 = gridY + 44                    -- top of first action row
+
+    love.graphics.setFont(self.fontLabel)
+    love.graphics.printf("Key Bindings", 0, 72, WINDOW_WIDTH, "center")
 
     -- Player column headers
     love.graphics.setFont(self.fontLabel)
@@ -94,7 +160,8 @@ function SettingsState:render()
 
         for p = 1, MAX_PLAYERS do
             local cx        = (p-1) * colW
-            local isSelected = (p == self.selectedPlayer and a == self.selectedAction)
+            local isSelected = self.selectedSection == 'bindings'
+                and p == self.selectedPlayer and a == self.selectedAction
             local pc        = PLAYER_COLORS[p]
             local boxX, boxW = cx + 14, colW - 28
             local boxH = 62
@@ -127,17 +194,52 @@ function SettingsState:render()
                 love.graphics.setColor(1, 1, 0.4)
             else
                 keyText = string.upper(KEY_BINDINGS[p][ACTION_KEYS[a]])
-                love.graphics.setColor(isSelected and {1,1,1} or {0.65, 0.65, 0.65})
+                if isSelected then
+                    love.graphics.setColor(1, 1, 1)
+                else
+                    love.graphics.setColor(0.65, 0.65, 0.65)
+                end
             end
             love.graphics.printf(keyText, boxX, cy + 34, boxW, "center")
         end
+    end
+
+    love.graphics.setFont(self.fontLabel)
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf("Audio", 0, 430, WINDOW_WIDTH, "center")
+
+    local sliderX = 360
+    local sliderW = 360
+    local sliderH = 18
+    local sliderY = 480
+    local rowGap = 48
+    for i = 1, #VOLUME_LABELS do
+        local y = sliderY + (i - 1) * rowGap
+        local value = AUDIO_VOLUMES[VOLUME_KEYS[i]] or 0
+        local isSelected = self.selectedSection == 'audio' and self.selectedAudio == i
+
+        if isSelected then
+            love.graphics.setColor(1, 1, 1)
+            love.graphics.rectangle('line', sliderX - 12, y - 10, sliderW + 110, sliderH + 20, 8)
+        end
+
+        love.graphics.setColor(0.75, 0.75, 0.75)
+        love.graphics.printf(VOLUME_LABELS[i], 180, y - 4, 150, 'left')
+        love.graphics.setColor(0.2, 0.2, 0.2, 0.9)
+        love.graphics.rectangle('fill', sliderX, y, sliderW, sliderH, 8)
+        love.graphics.setColor(0.3, 0.9, 1, 0.9)
+        love.graphics.rectangle('fill', sliderX, y, sliderW * value, sliderH, 8)
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.rectangle('line', sliderX, y, sliderW, sliderH, 8)
+        love.graphics.printf(string.format('%d%%', math.floor(value * 100 + 0.5)),
+            sliderX + sliderW + 20, y - 4, 90, 'left')
     end
 
     -- Footer hint
     love.graphics.setFont(self.fontFooter)
     love.graphics.setColor(0.55, 0.55, 0.55)
     love.graphics.printf(
-        "LEFT / RIGHT: player    UP / DOWN: action    ENTER: rebind    ESC: back",
+        "BINDINGS: LEFT/RIGHT player, UP/DOWN action, ENTER rebind    AUDIO: UP/DOWN select, LEFT/RIGHT adjust, ENTER save    ESC: back",
         0, WINDOW_HEIGHT - 36, WINDOW_WIDTH, "center")
     love.graphics.setColor(1, 1, 1)
 end

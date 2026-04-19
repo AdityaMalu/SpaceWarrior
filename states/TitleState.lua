@@ -1,5 +1,7 @@
 TitleState = Class{__includes = BaseState}
 
+local audio = require 'modules.audio'
+
 function TitleState:init()
     -- Single cleanup point for any LAN connection left over from a finished game.
     -- PlayState intentionally keeps enet alive across rounds; arriving here means
@@ -15,7 +17,7 @@ function TitleState:init()
     self.background = love.graphics.newImage("assets/BG.png")
     self.font  = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 60)
     self.font2 = love.graphics.newFont("libraries/Bungee/BungeeSpice-Regular.ttf", 30)
-    self.sounds = love.audio.newSource("assets/Sounds/SkyFire (Title Screen).ogg", "static")
+    self.sounds = audio.newSource("assets/Sounds/SkyFire (Title Screen).ogg", "static", "music")
     self.sounds:setVolume(0.5)
     self.sounds:setLooping(true)
     self.sounds:play()

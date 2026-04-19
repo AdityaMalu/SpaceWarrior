@@ -7,6 +7,8 @@ require 'modules.powersuplier'
 require 'modules.maps'
 local net = require 'modules.net'
 local physics = require 'modules.physics'
+local audio = require 'modules.audio'
+local PauseState = require 'states.PauseState'
 math.randomseed(os.time())
 
 -- Thin wrapper around physics.resolveElasticCollision: adapts the Player/collider
@@ -105,13 +107,13 @@ function PlayState:init()
         {800, 375,  50, 175}, {850, 325, 175,  50},
     }
 
-    self.sounds = love.audio.newSource("assets/Sounds/Space Heroes.ogg", "static")
+    self.sounds = audio.newSource("assets/Sounds/Space Heroes.ogg", "static", "music")
     self.sounds:setVolume(0.18)
     self.sounds:setLooping(true)
     self.sounds:play()
-    self.blastsound  = love.audio.newSource("assets/Sounds/deathexplosion.mp3", "static")
+    self.blastsound  = audio.newSource("assets/Sounds/deathexplosion.mp3", "static", "sfx")
     self.blastsound:setVolume(0.5)
-    self.bulletsound = love.audio.newSource('assets/Sounds/bulletshootsound.mp3', 'static')
+    self.bulletsound = audio.newSource('assets/Sounds/bulletshootsound.mp3', 'static', 'sfx')
     self.bulletsound:setVolume(0.2)
 end
 
@@ -389,6 +391,16 @@ end
 function PlayState:keypressed(key)
     if key == 'escape' then
         gStateMachine:change('title')   -- ESC = back to menu (not quit)
+        return
+    end
+
+    if key == 'p' then
+        if NET.mode then
+            return
+        end
+        local pauseState = PauseState()
+        pauseState:enter(self)
+        gStateMachine.current = pauseState
         return
     end
 
