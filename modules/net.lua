@@ -13,9 +13,20 @@ net.MSG_INPUT    = 1   -- client → host : rotate(B), shoot(B), usepower(B)
 net.MSG_STATE    = 2   -- host → client : full game snapshot
 net.MSG_START    = 3   -- host → client : "game is starting now"
 net.MSG_GAMEOVER = 4   -- host → client : winner announced
+net.MSG_HELLO    = 5   -- client → host : protocol hello { version }
+net.MSG_HELLO_OK = 6   -- host → client : protocol accepted
+net.MSG_VERSION_MISMATCH = 7 -- host → client : { expectedVersion, actualVersion }
 
 net.PORT      = 22122
 net.TICK_RATE = 1 / 60   -- broadcast every frame for smooth client rendering
+net.NET_PROTOCOL_VERSION = 1
+
+net.STRINGS = {
+    portInUse = "Port %d is already in use.",
+    connectTimeout = "Connection timed out after 5 seconds.",
+    peerDisconnected = "Peer disconnected. Returning to title.",
+    versionMismatch = "Version mismatch. Local build %s uses protocol %d, peer uses protocol %d.",
+}
 
 -- ── Helpers ──────────────────────────────────────────────────────────────────
 -- Returns the LAN IP of this machine using the UDP-routing trick (no data sent).
@@ -34,6 +45,21 @@ function net.getLocalIP()
 end
 
 -- ── Simple encode helpers ─────────────────────────────────────────────────────
+function net.encodeHello(version)
+    return love.data.pack("string", "BB", net.MSG_HELLO, version or net.NET_PROTOCOL_VERSION)
+end
+
+function net.encodeHelloOk()
+    return love.data.pack("string", "B", net.MSG_HELLO_OK)
+end
+
+function net.encodeVersionMismatch(expectedVersion, actualVersion)
+    return love.data.pack("string", "BBB",
+        net.MSG_VERSION_MISMATCH,
+        expectedVersion or net.NET_PROTOCOL_VERSION,
+        actualVersion or 0)
+end
+
 function net.encodeStart()
     return love.data.pack("string", "B", net.MSG_START)
 end
@@ -54,6 +80,29 @@ function net.encodeInput(rotate, shoot, usepower)
         rotate   and 1 or 0,
         shoot    and 1 or 0,
         usepower and 1 or 0)
+end
+
+function net.getGameVersion()
+    local ok, versionModule = pcall(require, "version")
+    if ok then
+        if type(versionModule) == "table" and type(versionModule.GAME_VERSION) == "string"
+                and versionModule.GAME_VERSION ~= "" then
+            return versionModule.GAME_VERSION
+        end
+        if type(versionModule) == "string" and versionModule ~= "" then
+            return versionModule
+        end
+    end
+
+    if type(_G.GAME_VERSION) == "string" and _G.GAME_VERSION ~= "" then
+        return _G.GAME_VERSION
+    end
+
+    return "dev"
+end
+
+function net.formatVersionMismatch(localVersion, localProtocol, peerProtocol)
+    return string.format(net.STRINGS.versionMismatch, localVersion, localProtocol, peerProtocol)
 end
 
 -- ── Full state encoder ────────────────────────────────────────────────────────
@@ -174,6 +223,23 @@ function net.decode(raw)
         if #raw < 4 then return nil end
         local _, r, s, u = love.data.unpack("BBBB", raw, 1)
         return { type=net.MSG_INPUT, rotate=r==1, shoot=s==1, usepower=u==1 }
+
+    elseif msgType == net.MSG_HELLO then
+        if #raw < 2 then return nil end
+        local _, version = love.data.unpack("BB", raw, 1)
+        return { type=net.MSG_HELLO, version=version }
+
+    elseif msgType == net.MSG_HELLO_OK then
+        return { type=net.MSG_HELLO_OK }
+
+    elseif msgType == net.MSG_VERSION_MISMATCH then
+        if #raw < 3 then return nil end
+        local _, expectedVersion, actualVersion = love.data.unpack("BBB", raw, 1)
+        return {
+            type=net.MSG_VERSION_MISMATCH,
+            expectedVersion=expectedVersion,
+            actualVersion=actualVersion,
+        }
 
     elseif msgType == net.MSG_STATE then
         local msg = {

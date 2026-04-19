@@ -19,6 +19,11 @@ function TitleState:init()
     self.sounds:setVolume(0.5)
     self.sounds:setLooping(true)
     self.sounds:play()
+    self.notice = ""
+end
+
+function TitleState:enter(message)
+    self.notice = message or ""
 end
 
 function TitleState:update()
@@ -54,6 +59,11 @@ function TitleState:render()
     love.graphics.setFont(self.font)
     love.graphics.printf("Space Warrior",0,0,WINDOW_WIDTH,"center")
     love.graphics.setFont(self.font2)
+    if self.notice ~= "" then
+        love.graphics.setColor(1, 0.8, 0.4)
+        love.graphics.printf(self.notice, 120, 385, WINDOW_WIDTH - 240, "center")
+        love.graphics.setColor(1, 1, 1)
+    end
     love.graphics.printf("PRESS ENTER TO PLAY",       0, 430, WINDOW_WIDTH, "center")
     love.graphics.printf("PRESS I FOR RULES",          0, 470, WINDOW_WIDTH, "center")
     love.graphics.printf("PRESS K FOR KEY BINDINGS",   0, 510, WINDOW_WIDTH, "center")

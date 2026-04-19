@@ -100,7 +100,7 @@ function NetClientState:update(dt)
                 end
             elseif event.type == "disconnect" then
                 self:_cleanup()
-                gStateMachine:change("title")
+                gStateMachine:change("title", net.STRINGS.peerDisconnected)
                 return
             end
             event = NET.host:service(0)
